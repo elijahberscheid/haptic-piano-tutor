@@ -1,7 +1,7 @@
 #include "stm32f0xx.h"
 #include "DebugHelper.h"
 #include "GlobalVariables.h"
-#include "haptic-piano-tutor-libary/src/tty.h"
+#include "haptic-piano-tutor-library/src/tty.h"
 
 int main(void)
 {

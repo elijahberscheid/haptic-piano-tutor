@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "haptic-piano-tutor-libary/src/tty.h"
+#include "haptic-piano-tutor-library/src/tty.h"
 #include "DebugHelper.h"
 #include "GlobalVariables.h"
 

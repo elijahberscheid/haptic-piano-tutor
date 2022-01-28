@@ -1,20 +1,20 @@
 #include <string.h>
 #include "GlobalVariables.h"
 
-#define EXPAND_AS_INITIALIZATION(_name, _id, _type, _initVal) \
-    _name = _initVal;
+#define EXPAND_AS_INITIALIZATION(_name, _id, _type) \
+    memset(&_name, 0, sizeof(_name));
 
 GLOBALS_TABLE(EXPAND_AS_VARIABLE)
 
-static void *globalsList[GLOBALS_MAX_NUM] = {
+static void *globalsList[GLOBAL_MAX_NUM] = {
     GLOBALS_TABLE(EXPAND_AS_ADDRESS)
 };
 
-static char *globalsNames[GLOBALS_MAX_NUM] = {
+static char *globalsNames[GLOBAL_MAX_NUM] = {
     GLOBALS_TABLE(EXPAND_AS_STRING)
 };
 
-static char *globalsTypes[GLOBALS_MAX_NUM] = {
+static char *globalsTypes[GLOBAL_MAX_NUM] = {
     GLOBALS_TABLE(EXPAND_AS_TYPE)
 };
 

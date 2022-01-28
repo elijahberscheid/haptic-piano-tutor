@@ -1,6 +1,6 @@
+*.swp
 .metadata/
 
-# other useful ignores from https://github.com/github/gitignore/blob/master/C.gitignore
 # Prerequisites
 *.d
 

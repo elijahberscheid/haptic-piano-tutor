@@ -1,6 +1,8 @@
-# System Workbench directories
 .cproject
 .project
+
+# System Workbench directories
+/.settings/
 /StdPeriph_Driver/
 /Debug/
 /CMSIS/

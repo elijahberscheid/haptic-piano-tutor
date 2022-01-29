@@ -1,14 +1,15 @@
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include "haptic-piano-tutor-library/src/tty.h"
 #include "DebugHelper.h"
 #include "GlobalVariables.h"
 
 enum {
     CHAR_BUFFER_SIZE = 128, // must match value in tty.c
-    MAX_NUM_WORDS = 64
+    MAX_NUM_WORDS = 64,
+    MAX_ARRAY_SIZE = 128
 };
 
 static bool ProcessRead(char **words) {
@@ -34,6 +35,24 @@ static bool ProcessRead(char **words) {
                 bool value = false;
                 GlobalVariables_Read(id, &value);
                 printf("%s = %s\n", GlobalVariables_GetName(id), value? "true" : "false");
+            }
+            else if (strncmp("uint8_t[", GlobalVariables_GetType(id), strlen("uint8_t[")) == 0) {
+                uint8_t array[MAX_ARRAY_SIZE] = { 0 };
+                GlobalVariables_Read(id, array);
+                printf("%s = {\n", GlobalVariables_GetName(id));
+                for (uint8_t i = 0; i < GlobalVariables_GetLength(id); i++) {
+                    printf("%u\n", array[i]);
+                }
+                printf("}\n");
+            }
+            else if (strncmp("int8_t[", GlobalVariables_GetType(id), strlen("int8_t[")) == 0) {
+                int8_t array[MAX_ARRAY_SIZE] = { 0 };
+                GlobalVariables_Read(id, array);
+                printf("%s = {\n", GlobalVariables_GetName(id));
+                for (uint8_t i = 0; i < GlobalVariables_GetLength(id); i++) {
+                    printf("%d\n", array[i]);
+                }
+                printf("}\n");
             }
             actionTaken = true;
         }
@@ -61,6 +80,20 @@ static bool ProcessWrite(char **words) {
                 // writes false for anything entered except "true"
                 bool value = (strcasecmp(words[2], "true") == 0)? true : false;
                 GlobalVariables_Write(id, &value);
+            }
+            else if (strncmp("uint8_t[", GlobalVariables_GetType(id), strlen("uint8_t[")) == 0) {
+                uint8_t array[MAX_ARRAY_SIZE] = { 0 };
+                for (uint8_t i = 0; i < GlobalVariables_GetLength(id); i++) {
+                    array[i] = (uint8_t) strtol(words[i + 2], NULL, 10);
+                }
+                GlobalVariables_Write(id, array);
+            }
+            else if (strncmp("int8_t[", GlobalVariables_GetType(id), strlen("int8_t[")) == 0) {
+                int8_t array[MAX_ARRAY_SIZE] = { 0 };
+                for (uint8_t i = 0; i < GlobalVariables_GetLength(id); i++) {
+                    array[i] = (int8_t) strtol(words[i + 2], NULL, 10);
+                }
+                GlobalVariables_Write(id, array);
             }
             actionTaken = true;
         }

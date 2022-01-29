@@ -1,21 +1,35 @@
 #include <string.h>
 #include "GlobalVariables.h"
 
-#define EXPAND_AS_INITIALIZATION(_name, _id, _type) \
+#include <stdio.h>
+
+#define EXPAND_AS_PRIMITIVE_INITIALIZATION(_name,_type, _array_size) \
     memset(&_name, 0, sizeof(_name));
 
-GLOBALS_TABLE(EXPAND_AS_VARIABLE)
+#define EXPAND_AS_ARRAY_INITIALIZATION(_name,_type, _array_size) \
+    memset(_name, 0, sizeof(_name));
+
+GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_VARIABLE)
+GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_VARIABLE)
 
 static void *globalsList[GLOBAL_MAX_NUM] = {
-    GLOBALS_TABLE(EXPAND_AS_ADDRESS)
+    GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_ADDRESS)
+    GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_ADDRESS)
 };
 
 static char *globalsNames[GLOBAL_MAX_NUM] = {
-    GLOBALS_TABLE(EXPAND_AS_STRING)
+    GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_STRING)
+    GLOBALS_ARRAY_TABLE(EXPAND_AS_STRING)
 };
 
 static char *globalsTypes[GLOBAL_MAX_NUM] = {
-    GLOBALS_TABLE(EXPAND_AS_TYPE)
+    GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_TYPE)
+    GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_TYPE)
+};
+
+static uint16_t globalsLengths[GLOBAL_MAX_NUM] = {
+    GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_LENGTH)
+    GLOBALS_ARRAY_TABLE(EXPAND_AS_LENGTH)
 };
 
 char *GlobalVariables_GetName(uint8_t id) {
@@ -24,6 +38,10 @@ char *GlobalVariables_GetName(uint8_t id) {
 
 char *GlobalVariables_GetType(uint8_t id) {
     return globalsTypes[id];
+}
+
+uint16_t GlobalVariables_GetLength(uint8_t id) {
+    return globalsLengths[id];
 }
 
 void GlobalVariables_Read(uint8_t id, void *dest) {
@@ -38,6 +56,12 @@ void GlobalVariables_Read(uint8_t id, void *dest) {
     }
     else if (strcmp("bool", globalsTypes[id]) == 0) {
         *(bool *)dest = *(bool *)globalsList[id];
+    }
+    else if (strncmp("uint8_t[", globalsTypes[id], strlen("uint8_t[")) == 0) {
+        memcpy(dest, globalsList[id], globalsLengths[id] * sizeof(uint8_t));
+    }
+    else if (strncmp("int8_t[", globalsTypes[id], strlen("int8_t[")) == 0) {
+        memcpy(dest, globalsList[id], globalsLengths[id] * sizeof(int8_t));
     }
 }
 
@@ -54,8 +78,15 @@ void GlobalVariables_Write(uint8_t id, void *src) {
     else if (strcmp("bool", globalsTypes[id]) == 0) {
         *(bool *)globalsList[id] = *(bool *)src;
     }
+    else if (strncmp("uint8_t[", globalsTypes[id], strlen("uint8_t[")) == 0) {
+        memcpy(globalsList[id], src, globalsLengths[id] * sizeof(uint8_t));
+    }
+    else if (strncmp("int8_t[", globalsTypes[id], strlen("int8_t[")) == 0) {
+        memcpy(globalsList[id], src, globalsLengths[id] * sizeof(int8_t));
+    }
 }
 
 void GlobalVariables_Init(void) {
-    GLOBALS_TABLE(EXPAND_AS_INITIALIZATION)
+    GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_INITIALIZATION)
+    GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_INITIALIZATION)
 }

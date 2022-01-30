@@ -43,6 +43,12 @@
 #define EXPAND_AS_LENGTH(_name, _type, _array_length) \
     _array_length,
 
+#define EXPAND_AS_PRIMITIVE_INITIALIZATION(_name,_type, _array_size) \
+    memset(&_name, 0, sizeof(_name));
+
+#define EXPAND_AS_ARRAY_INITIALIZATION(_name,_type, _array_size) \
+    memset(_name, 0, sizeof(_name));
+
 enum {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_ENUM)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ENUM)
@@ -54,6 +60,8 @@ char *GlobalVariables_GetType(uint8_t id);
 uint16_t GlobalVariables_GetLength(uint8_t id);
 void GlobalVariables_Read(uint8_t id, void *dest);
 void GlobalVariables_Write(uint8_t id, void *src);
+void GlobalVariables_Subscribe(uint8_t id, void (*callback)(void *));
+void GlobalVariables_Unsubscribe(uint8_t id, void (*callback)(void *));
 void GlobalVariables_Init(void);
 
 #endif

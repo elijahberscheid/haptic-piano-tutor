@@ -4,17 +4,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-//                   Name,                Type, 0 (to have enough arguments for macros)
+//        Name,                     Type,       0 (to have enough arguments for macros)
 #define GLOBALS_PRIMITIVE_TABLE(ENTRY) \
-    ENTRY(              A,             uint8_t, 0) \
-    ENTRY(              B,            uint16_t, 0) \
-    ENTRY(              C,            uint32_t, 0) \
-    ENTRY(              D,                bool, 0) \
+    ENTRY(SoundDetectedSignal,      uint8_t,    0) \
+    ENTRY(ExampleB,                 uint16_t,   0) \
+    ENTRY(ExampleC,                 uint32_t,   0) \
+    ENTRY(ExampleD,                 bool,       0) \
 
-//                   Name,           Base Type,     Length
+//        Name,                     Base Type,  Length
 #define GLOBALS_ARRAY_TABLE(ENTRY) \
-    ENTRY(FingerPositions,             uint8_t,       10) \
-    ENTRY(FingerDistances,              int8_t,       10)
+    ENTRY(FingerPositions,          uint8_t,    10) \
+    ENTRY(FingerDistances,          int8_t,     10) \
 
 #define EXPAND_AS_ENUM(_name, _type, _array_length) \
     Global_##_name,
@@ -60,8 +60,8 @@ char *GlobalVariables_GetType(uint8_t id);
 uint16_t GlobalVariables_GetLength(uint8_t id);
 void GlobalVariables_Read(uint8_t id, void *dest);
 void GlobalVariables_Write(uint8_t id, void *src);
-void GlobalVariables_Subscribe(uint8_t id, void (*callback)(void *));
-void GlobalVariables_Unsubscribe(uint8_t id, void (*callback)(void *));
+void GlobalVariables_Subscribe(uint8_t id, void (*callback)(const void *));
+void GlobalVariables_Unsubscribe(uint8_t id, void (*callback)(const void *));
 void GlobalVariables_Init(void);
 
 #endif

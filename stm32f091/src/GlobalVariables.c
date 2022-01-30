@@ -29,7 +29,7 @@ static uint16_t const globalsLengths[GLOBAL_MAX_NUM] = {
     GLOBALS_ARRAY_TABLE(EXPAND_AS_LENGTH)
 };
 
-typedef void (*Callback)(void *);
+typedef void (*Callback)(const void *);
 static Callback subscriptionList[GLOBAL_MAX_NUM][MAX_NUM_SUBSCRIPTIONS] = { NULL };
 
 char *GlobalVariables_GetName(uint8_t id) {
@@ -118,13 +118,13 @@ void GlobalVariables_Write(uint8_t id, void *src) {
     else if (valueChanged) {
         for (uint8_t i = 0; i < MAX_NUM_SUBSCRIPTIONS; i++) {
             if (subscriptionList[id][i] != NULL) {
-                (*subscriptionList[id][i])(src);
+                (*subscriptionList[id][i])(src); // not called with globalsList[id] in case callee accidentally modifies the data
             }
         }
     }
 }
 
-void GlobalVariables_Subscribe(uint8_t id, void (*callback)(void *)) {
+void GlobalVariables_Subscribe(uint8_t id, void (*callback)(const void *)) {
     bool subscribed = false;
     for (uint8_t i = 0; i < MAX_NUM_SUBSCRIPTIONS; i++) {
         if (subscriptionList[id][i] == NULL) {
@@ -138,7 +138,7 @@ void GlobalVariables_Subscribe(uint8_t id, void (*callback)(void *)) {
     }
 }
 
-void GlobalVariables_Unsubscribe(uint8_t id, void (*callback)(void *)) {
+void GlobalVariables_Unsubscribe(uint8_t id, void (*callback)(const void *)) {
     bool unsubscribed = false;
     for (uint8_t i = 0; i < MAX_NUM_SUBSCRIPTIONS; i++) {
         if (subscriptionList[id][i] == callback) {

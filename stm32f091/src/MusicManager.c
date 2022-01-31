@@ -1,5 +1,5 @@
-#include "MusicManager.h"
 #include "GlobalVariables.h"
+#include "MusicManager.h"
 
 #include <stdio.h>
 

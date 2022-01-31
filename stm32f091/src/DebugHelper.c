@@ -4,7 +4,7 @@
 #include <string.h>
 #include "haptic-piano-tutor-library/src/tty.h"
 #include "DebugHelper.h"
-#include "GlobalVariables.h"
+#include "modules/GlobalVariables.h"
 
 enum {
     CHAR_BUFFER_SIZE = 128, // must match value in tty.c

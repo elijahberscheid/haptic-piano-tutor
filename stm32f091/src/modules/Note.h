@@ -127,7 +127,9 @@ enum {
     Key_ASharp7 = 85,
     Key_BFlat7 = 85,
     Key_B7 = 86,
-    Key_C8 = 87
+    Key_C8 = 87,
+    Key_Invalid = 88,
+    Key_Rest = 89
 };
 typedef uint8_t Key_t;
 
@@ -144,11 +146,11 @@ enum {
 typedef uint8_t NoteLength_t;
 
 enum {
-    Finger_Left1,
-    Finger_Left2,
-    Finger_Left3,
+    Finger_Left5 = 0,
     Finger_Left4,
-    Finger_Left5,
+    Finger_Left3,
+    Finger_Left2,
+    Finger_Left1,
     Finger_Right1,
     Finger_Right2,
     Finger_Right3,

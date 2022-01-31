@@ -50,6 +50,8 @@ CPPUTEST_USE_EXTENSIONS = Y
 # containing directory
 INCLUDE_DIRS += $(CPPUTEST_HOME)/include
 INCLUDE_DIRS += $(CPPUTEST_HOME)/include/Platforms/Gcc
+INCLUDE_DIRS += \
+	src/modules
 
 
 # --- CPPUTEST_OBJS_DIR ---

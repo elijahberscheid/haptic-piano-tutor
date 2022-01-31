@@ -7,13 +7,13 @@
 //        Name,                     Type,       0 (to have enough arguments for macros)
 #define GLOBALS_PRIMITIVE_TABLE(ENTRY) \
     ENTRY(SoundDetectedSignal,      uint8_t,    0) \
-    ENTRY(ExampleB,                 uint16_t,   0) \
-    ENTRY(ExampleC,                 uint32_t,   0) \
-    ENTRY(ExampleD,                 bool,       0) \
+    ENTRY(IsPlayingSong,            bool,       0) \
+    ENTRY(SongIndex,                uint8_t,    0) \
 
 //        Name,                     Base Type,  Length
 #define GLOBALS_ARRAY_TABLE(ENTRY) \
     ENTRY(FingerPositions,          uint8_t,    10) \
+    ENTRY(DesiredFingerPositions,   uint8_t,    10) \
     ENTRY(FingerDistances,          int8_t,     10) \
 
 #define EXPAND_AS_ENUM(_name, _type, _array_length) \

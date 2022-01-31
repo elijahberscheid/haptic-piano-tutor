@@ -34,4 +34,6 @@
 //     { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
 // 
 //     { .key = Key_C4, .length = NoteLength_Whole, .finger = Finger_Right1 },
+//
+//     { .key = Key_Invalid, .length = 0, .finger = 0 }
 // };

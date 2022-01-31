@@ -29,8 +29,7 @@ static uint16_t const globalsLengths[GLOBAL_MAX_NUM] = {
     GLOBALS_ARRAY_TABLE(EXPAND_AS_LENGTH)
 };
 
-typedef void (*Callback)(const void *);
-static Callback subscriptionList[GLOBAL_MAX_NUM][MAX_NUM_SUBSCRIPTIONS] = { NULL };
+static GlobalVariables_Subscription_t subscriptionList[GLOBAL_MAX_NUM][MAX_NUM_SUBSCRIPTIONS] = {{ 0 }};
 
 char *GlobalVariables_GetName(uint8_t id) {
     return globalsNames[id];
@@ -117,18 +116,19 @@ void GlobalVariables_Write(uint8_t id, void *src) {
     }
     else if (valueChanged) {
         for (uint8_t i = 0; i < MAX_NUM_SUBSCRIPTIONS; i++) {
-            if (subscriptionList[id][i] != NULL) {
-                (*subscriptionList[id][i])(src); // not called with globalsList[id] in case callee accidentally modifies the data
+            if (subscriptionList[id][i].callback != NULL) {
+                (*subscriptionList[id][i].callback)(subscriptionList[id][i].context, src); // do not pass globalsList[id] as data in case callee accidentally modifies the data
             }
         }
     }
 }
 
-void GlobalVariables_Subscribe(uint8_t id, void (*callback)(const void *)) {
+void GlobalVariables_Subscribe(uint8_t id, const GlobalVariables_Subscription_t *subscription) {
     bool subscribed = false;
     for (uint8_t i = 0; i < MAX_NUM_SUBSCRIPTIONS; i++) {
-        if (subscriptionList[id][i] == NULL) {
-            subscriptionList[id][i] = callback;
+        if (subscriptionList[id][i].callback == NULL) {
+            subscriptionList[id][i].callback = subscription->callback;
+            subscriptionList[id][i].context = subscription->context;
             subscribed = true;
             break;
         }
@@ -138,11 +138,13 @@ void GlobalVariables_Subscribe(uint8_t id, void (*callback)(const void *)) {
     }
 }
 
-void GlobalVariables_Unsubscribe(uint8_t id, void (*callback)(const void *)) {
+void GlobalVariables_Unsubscribe(uint8_t id, const GlobalVariables_Subscription_t *subscription) {
     bool unsubscribed = false;
     for (uint8_t i = 0; i < MAX_NUM_SUBSCRIPTIONS; i++) {
-        if (subscriptionList[id][i] == callback) {
-            subscriptionList[id][i] = NULL;
+        if (subscriptionList[id][i].callback == subscription->callback
+                && subscriptionList[id][i].context == subscription->context) {
+            subscriptionList[id][i].callback = NULL;
+            subscriptionList[id][i].context = NULL;
             unsubscribed = true;
             break;
         }

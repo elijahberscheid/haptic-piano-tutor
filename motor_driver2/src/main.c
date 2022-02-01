@@ -1,6 +1,12 @@
 #include "stm32f0xx.h"
 #include <stdint.h> // for uint8_t
 
+// R=right, L=left, H=hand, F=finger
+// index mapping for motors
+// 0: LH
+enum {
+    numberOfMotorPairs = 12
+};
 
 // FIXME for example
 int8_t distanceVector[10] = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
@@ -8,12 +14,12 @@ int8_t distanceVector[10] = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
 typedef struct _hapticState_t {
     uint8_t dutyCycle; // as cycle number when to switch from 1 to 0 (if period=20, then 50% duty cycle is dutyCycle=10)
     uint8_t period; // as multiple of update period (200Hz=5ms)
-    uint8_t leftActive;
-    uint8_t rightActive;
+    uint8_t leftActive; // this represents left side of finger, NOT left hand
+    uint8_t rightActive; // this represents right side of finger, NOT right hand
     uint8_t subcycleCount;
 } hapticState_t;
 
-hapticState_t fingerHapticState[10];
+hapticState_t fingerHapticStates[10];
 hapticState_t wristHapticState[2];
 
 
@@ -53,11 +59,18 @@ void initializeHapticState() {
             | GPIO_BSRR_BR_8;
 
     for (int i = 0; i < 10; ++i) {
-        fingerHapticState[i].dutyCycle = 0;
-        fingerHapticState[i].period = 20;
-        fingerHapticState[i].leftActive = 0;
-        fingerHapticState[i].rightActive = 0;
-        fingerHapticState[i].subcycleCount = 0;
+        fingerHapticStates[i].dutyCycle = 0;
+        fingerHapticStates[i].period = 20;
+        fingerHapticStates[i].leftActive = 0;
+        fingerHapticStates[i].rightActive = 0;
+        fingerHapticStates[i].subcycleCount = 0;
+    }
+    for (int i = 0; i < 2; ++i) {
+        wristHapticState[i].dutyCycle = 0;
+        wristHapticState[i].period = 20;
+        wristHapticState[i].leftActive = 0;
+        wristHapticState[i].rightActive = 0;
+        wristHapticState[i].subcycleCount = 0;
     }
 }
 
@@ -100,42 +113,70 @@ void TIM3_IRQHandler() {
     for (int i = 0; i < 10; ++i) {
         if (distanceVector[i] < 0) { // if distance is negative, need right motor to push finger left
             distanceVector[i] = -distanceVector[i]; // take absolute value
-            fingerHapticState[i].leftActive = 0;
-            fingerHapticState[i].rightActive = 1;
+            fingerHapticStates[i].leftActive = 0;
+            fingerHapticStates[i].rightActive = 1;
         } else { // if distance is positive, need left motor to push finger right
-            fingerHapticState[i].leftActive = 1;
-            fingerHapticState[i].rightActive = 0;
+            fingerHapticStates[i].leftActive = 1;
+            fingerHapticStates[i].rightActive = 0;
         }
 
         // period = desiredFreq/updateFrequency
         if (distanceVector[i] >= 20) { // Far from key
-            fingerHapticState[i].dutyCycle = 0; // off
-            fingerHapticState[i].period = 20; // arbitrary
+            fingerHapticStates[i].dutyCycle = 0; // off
+            fingerHapticStates[i].period = 20; // arbitrary
         } else if (distanceVector[i] >= 2) { // Nearby key
-            fingerHapticState[i].dutyCycle = 10; // 50%
-            fingerHapticState[i].period = 20; // 20 * period of update
+            fingerHapticStates[i].dutyCycle = 10; // 50%
+            fingerHapticStates[i].period = 20; // 20 * period of update
         } else { // On top of key
-            fingerHapticState[i].dutyCycle = 2; // 10%
-            fingerHapticState[i].period = 20;
+            fingerHapticStates[i].dutyCycle = 2; // 10%
+            fingerHapticStates[i].period = 20;
             // Activate both motors
-            fingerHapticState[i].leftActive = 1;
-            fingerHapticState[i].rightActive = 1;
+            fingerHapticStates[i].leftActive = 1;
+            fingerHapticStates[i].rightActive = 1;
         }
     }
 
     // write both hands simultaneously
-    for (int i = 0; i < 5; ++i) {
-        pushBitsToHands((fingerHapticState[i].subcycleCount < fingerHapticState[i].dutyCycle) && fingerHapticState[i].leftActive,
-                        (fingerHapticState[i + 5].subcycleCount < fingerHapticState[i + 5].dutyCycle) && fingerHapticState[i + 5].rightActive);
-        fingerHapticState[i].subcycleCount += 1;
-        fingerHapticState[i + 5].subcycleCount += 1;
+    int i = 0;
+    while (i < 5) {
+        // left side of finger on each hand
+        pushBitsToHands((fingerHapticStates[i].subcycleCount < fingerHapticStates[i].dutyCycle) && fingerHapticStates[i].leftActive,
+                        (fingerHapticStates[i+5].subcycleCount < fingerHapticStates[i+5].dutyCycle) && fingerHapticStates[i+5].leftActive);
+        // right side of finger on each hand
+        pushBitsToHands((fingerHapticStates[i].subcycleCount < fingerHapticStates[i].dutyCycle) && fingerHapticStates[i].rightActive,
+                        (fingerHapticStates[i+5].subcycleCount < fingerHapticStates[i+5].dutyCycle) && fingerHapticStates[i+5].rightActive);
+        fingerHapticStates[i].subcycleCount += 1;
+        fingerHapticStates[i + 5].subcycleCount += 1;
 
-        if (fingerHapticState[i].subcycleCount > fingerHapticState[i].period) {
-            fingerHapticState[i].subcycleCount = 0;
+        if (fingerHapticStates[i].subcycleCount > fingerHapticStates[i].period) {
+            fingerHapticStates[i].subcycleCount = 0;
         }
-        if (fingerHapticState[i + 5].subcycleCount > fingerHapticState[i + 5].period) {
-            fingerHapticState[i + 5].subcycleCount = 0;
+        if (fingerHapticStates[i + 5].subcycleCount > fingerHapticStates[i + 5].period) {
+            fingerHapticStates[i + 5].subcycleCount = 0;
         }
+        ++i;
+    }
+
+    // left side of both wrists
+    pushBitsToHands((wristHapticState[0].subcycleCount < wristHapticState[0].dutyCycle) && wristHapticState[0].leftActive,
+                    (wristHapticState[1].subcycleCount < wristHapticState[1].dutyCycle) && wristHapticState[1].leftActive);
+    // right side of both wrists
+    pushBitsToHands((wristHapticState[0].subcycleCount < wristHapticState[0].dutyCycle) && wristHapticState[0].rightActive,
+                    (wristHapticState[1].subcycleCount < wristHapticState[1].dutyCycle) && wristHapticState[1].rightActive);
+    wristHapticState[0].subcycleCount += 1;
+    wristHapticState[1].subcycleCount += 1;
+    if (wristHapticState[0].subcycleCount > wristHapticState[0].period) {
+        wristHapticState[0].subcycleCount = 0;
+    }
+    if (wristHapticState[1].subcycleCount > wristHapticState[1].period) {
+        wristHapticState[1].subcycleCount = 0;
+    }
+    i += 2;
+
+    // finish filling shift registers
+    while (i < 16) {
+        pushBitsToHands(0, 0);
+        ++i;
     }
     latchHapticRegisters();
 }

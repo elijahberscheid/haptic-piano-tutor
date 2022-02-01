@@ -1,0 +1,10 @@
+/Debug/
+/Release/
+/CMSIS/
+/startup/
+/StdPeriph_Driver/
+/LinkerScript.ld
+/.cproject
+/.project
+/.settings/
+/mydebug2.cfg

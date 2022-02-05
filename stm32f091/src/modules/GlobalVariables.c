@@ -29,7 +29,7 @@ static uint16_t const globalsLengths[GLOBAL_MAX_NUM] = {
     GLOBALS_ARRAY_TABLE(EXPAND_AS_LENGTH)
 };
 
-static GlobalVariables_Subscription_t subscriptionList[GLOBAL_MAX_NUM][MAX_NUM_SUBSCRIPTIONS] = {{ 0 }};
+static GlobalVariables_Subscription_t subscriptionList[GLOBAL_MAX_NUM][MAX_NUM_SUBSCRIPTIONS] = {{{ 0 }}};
 
 char *GlobalVariables_GetName(uint8_t id) {
     return globalsNames[id];

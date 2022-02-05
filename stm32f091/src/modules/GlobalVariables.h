@@ -55,13 +55,20 @@ enum {
     GLOBAL_MAX_NUM
 };
 
+typedef void (*Callback)(void * context, const void *data);
+
+typedef struct {
+    void *context;
+    Callback callback;
+} GlobalVariables_Subscription_t;
+
 char *GlobalVariables_GetName(uint8_t id);
 char *GlobalVariables_GetType(uint8_t id);
 uint16_t GlobalVariables_GetLength(uint8_t id);
 void GlobalVariables_Read(uint8_t id, void *dest);
 void GlobalVariables_Write(uint8_t id, void *src);
-void GlobalVariables_Subscribe(uint8_t id, void (*callback)(const void *));
-void GlobalVariables_Unsubscribe(uint8_t id, void (*callback)(const void *));
+void GlobalVariables_Subscribe(uint8_t id, const GlobalVariables_Subscription_t *subscription);
+void GlobalVariables_Unsubscribe(uint8_t id, const GlobalVariables_Subscription_t *subscription);
 void GlobalVariables_Init(void);
 
 #endif

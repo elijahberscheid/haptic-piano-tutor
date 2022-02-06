@@ -1,4 +1,5 @@
 #include "stm32f0xx.h"
+#include <stdbool.h>
 #include <stdint.h> // for uint8_t
 
 // R=right, L=left, H=hand, F=finger
@@ -9,7 +10,7 @@ enum {
 };
 
 // FIXME for example
-int8_t distanceVector[10] = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
+int8_t distanceVector[10] = {88, 88, 88, 88, 88, 88, 88, 88, 88, 88};
 
 typedef struct _hapticState_t {
     uint8_t dutyCycle; // as cycle number when to switch from 1 to 0 (if period=20, then 50% duty cycle is dutyCycle=10)
@@ -68,8 +69,8 @@ void initializeHapticState() {
     for (int i = 0; i < 2; ++i) {
         wristHapticState[i].dutyCycle = 0;
         wristHapticState[i].period = 20;
-        wristHapticState[i].leftActive = 0;
-        wristHapticState[i].rightActive = 0;
+        wristHapticState[i].leftActive = 1;
+        wristHapticState[i].rightActive = 1;
         wristHapticState[i].subcycleCount = 0;
     }
 }
@@ -77,9 +78,9 @@ void initializeHapticState() {
 
 void pushBitsToHands(uint8_t bitLH, uint8_t bitRH) {
     GPIOA->BSRR = ((bitLH & 1) << 1) | GPIO_BSRR_BR_1 | ((bitRH & 1) << 5) | GPIO_BSRR_BR_5; // write to PA1 and PA5
-    //GPIOA->BRR = (1 << 2) | (1 << 6); // falling clock PA2 and PA6
+    //GPIOA->BSRR = (1 << 1) | (1 << 5); // write to PA1 and PA5
     GPIOA->BRR = GPIO_BRR_BR_2 | GPIO_BRR_BR_6; // falling clock PA2 and PA6
-    nano_wait(10); // hold time is 5ns
+    nano_wait(20); // hold time is 5ns
     GPIOA->BSRR = (1 << 2) | (1 << 6); // rising clock PA2 and PA6
     nano_wait(20); // setup time is 10ns, but minimum pulse width of CLK is 20ns
 }
@@ -89,9 +90,8 @@ void latchHapticRegisters() {
     nano_wait(20); // min pulse width is 20ns
     GPIOA->BRR = (1<<3) | (1<<7); // Reset LE on PA3 and PA7;
 }
-
 void enableHapticOutputs(uint8_t left, uint8_t right) {
-    GPIOA->BSRR = ((left & 1) << 4) | ((right & 1) << 8) | GPIO_BSRR_BR_4 | GPIO_BSRR_BR_8;
+    GPIOA->BSRR = ((~left & 1) << 4) | ((~right & 1) << 8) | GPIO_BSRR_BR_4 | GPIO_BSRR_BR_8;
 }
 
 
@@ -110,41 +110,65 @@ void setupTimer3() {
 void TIM3_IRQHandler() {
     TIM3->SR &= ~TIM_SR_UIF; // acknowledge interrupt
 
+    uint8_t numberOfFarLeftFingers = 0;
+    uint8_t numberOfFarRightFingers = 0;
+
     for (int i = 0; i < 10; ++i) {
+        uint8_t dist;
         if (distanceVector[i] < 0) { // if distance is negative, need right motor to push finger left
-            distanceVector[i] = -distanceVector[i]; // take absolute value
+            //distanceVector[i] = -distanceVector[i]; // take absolute value
+            dist = -distanceVector[i];
             fingerHapticStates[i].leftActive = 0;
             fingerHapticStates[i].rightActive = 1;
         } else { // if distance is positive, need left motor to push finger right
+            dist = distanceVector[i];
             fingerHapticStates[i].leftActive = 1;
             fingerHapticStates[i].rightActive = 0;
         }
 
         // period = desiredFreq/updateFrequency
-        if (distanceVector[i] >= 20) { // Far from key
-            fingerHapticStates[i].dutyCycle = 0; // off
-            fingerHapticStates[i].period = 20; // arbitrary
-        } else if (distanceVector[i] >= 2) { // Nearby key
-            fingerHapticStates[i].dutyCycle = 10; // 50%
-            fingerHapticStates[i].period = 20; // 20 * period of update
+        if (dist >= 20) { // Far from key
+            fingerHapticStates[i].dutyCycle = 0;
+            fingerHapticStates[i].period = 30;
+            if (i < 5) ++numberOfFarLeftFingers;
+            else       ++numberOfFarRightFingers;
+        } else if (dist >= 2) { // Nearby key
+            fingerHapticStates[i].dutyCycle = 40;
+            fingerHapticStates[i].period = 60; // times period of update
         } else { // On top of key
-            fingerHapticStates[i].dutyCycle = 2; // 10%
-            fingerHapticStates[i].period = 20;
+            fingerHapticStates[i].dutyCycle = 16;
+            fingerHapticStates[i].period = 60;
             // Activate both motors
             fingerHapticStates[i].leftActive = 1;
             fingerHapticStates[i].rightActive = 1;
         }
     }
 
+    if (numberOfFarLeftFingers == 10) {
+        wristHapticState[0].dutyCycle = 40;
+        wristHapticState[0].period = 60;
+        wristHapticState[0].leftActive = fingerHapticStates[4].leftActive;  // set direction based on left thumb
+        wristHapticState[0].rightActive = fingerHapticStates[4].rightActive;
+    }
+    if (numberOfFarRightFingers == 10) {
+        wristHapticState[1].dutyCycle = 40;
+        wristHapticState[1].period = 60;
+        wristHapticState[1].leftActive = fingerHapticStates[5].leftActive;  // set direction based on right thumb
+        wristHapticState[1].rightActive = fingerHapticStates[5].rightActive;
+    }
+
     // write both hands simultaneously
     int i = 0;
+    int bitsShifted = 0;
     while (i < 5) {
         // left side of finger on each hand
         pushBitsToHands((fingerHapticStates[i].subcycleCount < fingerHapticStates[i].dutyCycle) && fingerHapticStates[i].leftActive,
                         (fingerHapticStates[i+5].subcycleCount < fingerHapticStates[i+5].dutyCycle) && fingerHapticStates[i+5].leftActive);
+        ++bitsShifted;
         // right side of finger on each hand
         pushBitsToHands((fingerHapticStates[i].subcycleCount < fingerHapticStates[i].dutyCycle) && fingerHapticStates[i].rightActive,
                         (fingerHapticStates[i+5].subcycleCount < fingerHapticStates[i+5].dutyCycle) && fingerHapticStates[i+5].rightActive);
+        ++bitsShifted;
         fingerHapticStates[i].subcycleCount += 1;
         fingerHapticStates[i + 5].subcycleCount += 1;
 
@@ -160,9 +184,11 @@ void TIM3_IRQHandler() {
     // left side of both wrists
     pushBitsToHands((wristHapticState[0].subcycleCount < wristHapticState[0].dutyCycle) && wristHapticState[0].leftActive,
                     (wristHapticState[1].subcycleCount < wristHapticState[1].dutyCycle) && wristHapticState[1].leftActive);
+    ++bitsShifted;
     // right side of both wrists
     pushBitsToHands((wristHapticState[0].subcycleCount < wristHapticState[0].dutyCycle) && wristHapticState[0].rightActive,
                     (wristHapticState[1].subcycleCount < wristHapticState[1].dutyCycle) && wristHapticState[1].rightActive);
+    ++bitsShifted;
     wristHapticState[0].subcycleCount += 1;
     wristHapticState[1].subcycleCount += 1;
     if (wristHapticState[0].subcycleCount > wristHapticState[0].period) {
@@ -171,12 +197,11 @@ void TIM3_IRQHandler() {
     if (wristHapticState[1].subcycleCount > wristHapticState[1].period) {
         wristHapticState[1].subcycleCount = 0;
     }
-    i += 2;
 
     // finish filling shift registers
-    while (i < 16) {
-        pushBitsToHands(0, 0);
-        ++i;
+    while (bitsShifted < 16) {
+        pushBitsToHands(1, 1);
+        ++bitsShifted;
     }
     latchHapticRegisters();
 }
@@ -184,8 +209,23 @@ void TIM3_IRQHandler() {
 
 int main(void) {
     initializeHapticState();
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+
     setupTimer3();
     enableHapticOutputs(1, 1);
 
-    for(;;);
+    for(;;) {
+        int finger = 5;
+        int B10 = GPIOB->IDR & (1<<10);
+        int B11 = GPIOB->IDR & (1<<11);
+        if (B10 && B11) {
+            distanceVector[finger] = 0;
+        } else if (B10) {
+            distanceVector[finger] = 5;
+        } else if (B11) {
+            distanceVector[finger] = -5;
+        } else {
+            distanceVector[finger] = 88;
+        }
+    }
 }

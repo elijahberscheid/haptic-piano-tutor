@@ -67,4 +67,5 @@ LinkerScript.ld
 .project
 .settings/
 *.cfg
+.vim/
 

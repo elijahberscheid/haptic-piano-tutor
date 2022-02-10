@@ -141,7 +141,7 @@ void GlobalVariables_Subscribe(uint8_t id, const GlobalVariables_Subscription_t 
 void GlobalVariables_Unsubscribe(uint8_t id, const GlobalVariables_Subscription_t *subscription) {
     bool unsubscribed = false;
     for (uint8_t i = 0; i < MAX_NUM_SUBSCRIPTIONS; i++) {
-        if (subscriptionList[id][i].callback == subscription->callback
+        if (subscriptionList[id][i].callback != NULL
                 && subscriptionList[id][i].context == subscription->context) {
             subscriptionList[id][i].callback = NULL;
             subscriptionList[id][i].context = NULL;
@@ -157,4 +157,5 @@ void GlobalVariables_Unsubscribe(uint8_t id, const GlobalVariables_Subscription_
 void GlobalVariables_Init(void) {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_INITIALIZATION)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_INITIALIZATION)
+    memset(subscriptionList, 0, sizeof(**subscriptionList) * GLOBAL_MAX_NUM * MAX_NUM_SUBSCRIPTIONS); // make sure subscription list is cleared, for testing
 }

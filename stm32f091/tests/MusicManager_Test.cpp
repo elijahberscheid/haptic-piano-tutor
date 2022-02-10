@@ -28,9 +28,24 @@ static const Note_t channel3[] = {
     { .key = Key_Invalid, .length = 0, .finger = 0 }
 };
 
+static const Note_t channel4[] = {
+    { .key = Key_C3, .length = NoteLength_Quarter, .finger = Finger_Left1 },
+    { .key = Key_C4, .length = NoteLength_Half, .finger = Finger_Left1 },
+    { .key = Key_C5, .length = NoteLength_Half, .finger = Finger_Left1 },
+    { .key = Key_Invalid, .length = 0, .finger = 0 }
+};
+
+static const Note_t channel5[] = {
+    { .key = Key_D5, .length = NoteLength_Half, .finger = Finger_Right5 },
+    { .key = Key_F5, .length = NoteLength_Half, .finger = Finger_Right5 },
+    { .key = Key_Invalid, .length = 0, .finger = 0 }
+};
+
 static const Song_t songs[] = {
     { .defaultTempo = 60, .channels = { channel1, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
-    { .defaultTempo = 80, .channels = { channel2, channel3, NULL, NULL, NULL, NULL, NULL, NULL } }
+    { .defaultTempo = 80, .channels = { channel2, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { .defaultTempo = 80, .channels = { channel2, channel3, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { .defaultTempo = 80, .channels = { channel4, channel5, NULL, NULL, NULL, NULL, NULL, NULL } }
 };
 
 static const MusicManagerConfig_t config = { .songs = songs };
@@ -68,11 +83,11 @@ TEST_GROUP(MusicManager) {
 TEST(MusicManager, ShouldRequestFirstNoteOnInit) {
     Key_t expected[] = {
         Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
-        Key_C4, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
     };
+    expected[Finger_Right1] = Key_C4;
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
-
     CheckDesiredFingerPositions(expected, actual);
 }
 
@@ -81,38 +96,92 @@ TEST(MusicManager, ShouldRequestNextNoteWhenSoundIsDetected) {
 
     Key_t expected[] = {
         Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
-        Key_Rest, Key_D4, Key_Rest, Key_Rest, Key_Rest
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
     };
+    expected[Finger_Right2] = Key_D4;
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
-
     CheckDesiredFingerPositions(expected, actual);
 
     ChangeSoundDetectedSignal();
+
     expected[Finger_Right2] = Key_Rest;
     expected[Finger_Right3] = Key_E4;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
-
     CheckDesiredFingerPositions(expected, actual);
 }
 
-// TEST(MusicManager, ShouldRequestConcurrentNotes) {
-//     uint8_t index = 1;
-//     GlobalVariables_Write(Global_SongIndex, &index);
-// 
-//     Key_t expected[] = {
-//         Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
-//         Key_D4, Key_Rest, Key_Rest, Key_Rest, Key_D5
-//     };
-//     Key_t actual[10] = { 0 };
-//     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
-// 
-//     CheckDesiredFingerPositions(expected, actual);
-// 
-//     ChangeSoundDetectedSignal();
-//     expected[Finger_Right1] = Key_F4;
-//     expected[Finger_Right5] = Key_F5;
-//     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
-// }
+TEST(MusicManager, ShouldStartAnotherSongAtBeginningWhenSongChanges) {
+    ChangeSoundDetectedSignal();
+
+    uint8_t index = 1;
+    GlobalVariables_Write(Global_SongIndex, &index);
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    expected[Finger_Right1] = Key_D4;
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+
+    ChangeSoundDetectedSignal();
+
+    expected[Finger_Right1] = Key_F4;
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+}
+
+TEST(MusicManager, ShouldRequestConcurrentNotes) {
+    uint8_t index = 2;
+    GlobalVariables_Write(Global_SongIndex, &index);
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    expected[Finger_Right1] = Key_D4;
+    expected[Finger_Right5] = Key_D5;
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+
+    ChangeSoundDetectedSignal();
+
+    expected[Finger_Right1] = Key_F4;
+    expected[Finger_Right5] = Key_F5;
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+}
+
+TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannel) { // for music with syncopation
+    uint8_t index = 3;
+    GlobalVariables_Write(Global_SongIndex, &index);
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    expected[Finger_Left1] = Key_C3;
+    expected[Finger_Right5] = Key_D5;
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+
+    ChangeSoundDetectedSignal();
+
+    expected[Finger_Left1] = Key_C4;
+    expected[Finger_Right5] = Key_Rest;
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+
+    ChangeSoundDetectedSignal();
+
+    expected[Finger_Left1] = Key_Rest;
+    expected[Finger_Right5] = Key_F5;
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+}
 
 // Should??IfMultipleNotesAreMappedToSameFinger, probably just take the top most one

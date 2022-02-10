@@ -5,13 +5,18 @@
 
 #define IGNORE(x) ((void)x)
 
-// Returns UINT32_MAX if the next note is invalid (i.e. there is no next note)
+enum {
+    NoteIndexNotFound = UINT32_MAX,
+    TickNumberNotFound = UINT32_MAX
+};
+
+// Returns TickNumberNotFound if the next note is invalid (i.e. there is no next note)
 static uint32_t FindNextTicks(MusicManager_t *instance, const Note_t *channel) {
     uint32_t nextTicks = 0;
     uint32_t noteIndex = 0;
 
     if (channel == NULL) {
-        nextTicks = UINT32_MAX;
+        nextTicks = TickNumberNotFound;
     }
     else {
         for (noteIndex = 0; channel[noteIndex].key != Key_Invalid; noteIndex++) {
@@ -24,20 +29,20 @@ static uint32_t FindNextTicks(MusicManager_t *instance, const Note_t *channel) {
         }
 
         if (channel[noteIndex].key == Key_Invalid) {
-            nextTicks = UINT32_MAX;
+            nextTicks = TickNumberNotFound;
         }
     }
 
     return nextTicks;
 }
 
-// Returns UINT32_MAX if there is no note at the exactly the current number of ticks
+// Returns NoteIndexNotFound if there is no note at the exactly the current number of ticks
 static uint32_t FindCurrentNoteIndex(MusicManager_t *instance, const Note_t *channel) {
     uint32_t nextTicks = 0;
     uint32_t noteIndex = 0;
 
     if (channel == NULL) {
-        nextTicks = UINT32_MAX;
+        nextTicks = NoteIndexNotFound;
     }
     else {
         for (noteIndex = 0; channel[noteIndex].key != Key_Invalid; noteIndex++) {
@@ -53,7 +58,7 @@ static uint32_t FindCurrentNoteIndex(MusicManager_t *instance, const Note_t *cha
         nextTicks -= channel[noteIndex].length;
     }
 
-    return (nextTicks == instance->ticks)? noteIndex : UINT32_MAX;
+    return (nextTicks == instance->ticks)? noteIndex : NoteIndexNotFound;
 }
 
 static void UpdateDesiredFingerPositions(MusicManager_t *instance) {
@@ -69,15 +74,17 @@ static void UpdateDesiredFingerPositions(MusicManager_t *instance) {
     for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
         if (song->channels[channelIndex] != NULL) {
             uint32_t noteIndex = FindCurrentNoteIndex(instance, song->channels[channelIndex]);
-            Finger_t finger = song->channels[channelIndex][noteIndex].finger;
-            positions[finger] = song->channels[channelIndex][noteIndex].key;
+            if (noteIndex != NoteIndexNotFound) {
+                Finger_t finger = song->channels[channelIndex][noteIndex].finger;
+                positions[finger] = song->channels[channelIndex][noteIndex].key;
+            }
         }
     }
 
     GlobalVariables_Write(Global_DesiredFingerPositions, positions);
 }
 
-static void PlaceInMusicChanged(void *context, const void *data) {
+static void SoundDetected(void *context, const void *data) {
     MusicManager_t *instance = (MusicManager_t *) context;
     IGNORE(data);
 
@@ -90,12 +97,22 @@ static void PlaceInMusicChanged(void *context, const void *data) {
         possibleNextTicks[channelIndex] = FindNextTicks(instance, song->channels[channelIndex]);
     }
 
+    uint32_t minPossibleNextTick = UINT32_MAX;
     for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
-        if ((possibleNextTicks[channelIndex] > instance->ticks) && (possibleNextTicks[channelIndex] != UINT32_MAX)) {
-            instance->ticks = possibleNextTicks[channelIndex];
+        if ((possibleNextTicks[channelIndex] < minPossibleNextTick) && (possibleNextTicks[channelIndex] != TickNumberNotFound)) {
+            minPossibleNextTick = possibleNextTicks[channelIndex];
         }
     }
+    instance->ticks = minPossibleNextTick;
 
+    UpdateDesiredFingerPositions(instance);
+}
+
+static void SongIndexChanged(void *context, const void *data) {
+    MusicManager_t *instance = (MusicManager_t *) context;
+    IGNORE(data);
+
+    instance->ticks = 0;
     UpdateDesiredFingerPositions(instance);
 }
 
@@ -105,6 +122,8 @@ void MusicManager_Init(MusicManager_t *instance, const MusicManagerConfig_t *con
 
     UpdateDesiredFingerPositions(instance);
 
-    const GlobalVariables_Subscription_t soundDetectedSubscription = { .context = instance, .callback = PlaceInMusicChanged };
+    const GlobalVariables_Subscription_t soundDetectedSubscription = { .context = instance, .callback = SoundDetected };
     GlobalVariables_Subscribe(Global_SoundDetectedSignal, &soundDetectedSubscription);
+    const GlobalVariables_Subscription_t songIndexSubscription = { .context = instance, .callback = SongIndexChanged };
+    GlobalVariables_Subscribe(Global_SongIndex, &songIndexSubscription);
 }

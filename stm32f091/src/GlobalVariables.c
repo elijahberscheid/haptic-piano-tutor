@@ -3,11 +3,11 @@
 
 #include <stdio.h>
 
-#define EXPAND_AS_PRIMITIVE_INITIALIZATION(_name,_type, _array_size) \
-    memset(&_name, 0, sizeof(_name));
+#define EXPAND_AS_PRIMITIVE_INITIALIZATION(_name, _type, _array_size) \
+    memset(&(_name), 0, sizeof(_name));
 
-#define EXPAND_AS_ARRAY_INITIALIZATION(_name,_type, _array_size) \
-    memset(_name, 0, sizeof(_name));
+#define EXPAND_AS_ARRAY_INITIALIZATION(_name, _type, _array_size) \
+    memset((_name), 0, sizeof(_name));
 
 GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_VARIABLE)
 GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_VARIABLE)

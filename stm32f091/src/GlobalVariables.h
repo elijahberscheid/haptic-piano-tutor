@@ -26,10 +26,10 @@
     _type _name[_array_length];
 
 #define EXPAND_AS_PRIMITIVE_ADDRESS(_name, _type, _array_length) \
-    &_name,
+    &(_name),
 
 #define EXPAND_AS_ARRAY_ADDRESS(_name, _type, _array_length) \
-    _name,
+    (_name),
 
 #define EXPAND_AS_STRING(_name, _type, _array_length) \
     #_name,
@@ -41,7 +41,7 @@
     #_type"["#_array_length"]",
 
 #define EXPAND_AS_LENGTH(_name, _type, _array_length) \
-    _array_length,
+    (_array_length),
 
 enum {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_ENUM)

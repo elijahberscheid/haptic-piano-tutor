@@ -11,6 +11,8 @@ int main(void)
     int i = 0;
     for(;;) {
         DebugHelper_Run();
+        uint8_t foo = 10;
+        GlobalVariables_Write(Global_A, &foo);
         i++;
     }
 }

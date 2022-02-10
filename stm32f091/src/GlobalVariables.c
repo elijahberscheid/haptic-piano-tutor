@@ -32,6 +32,8 @@ static uint16_t globalsLengths[GLOBAL_MAX_NUM] = {
     GLOBALS_ARRAY_TABLE(EXPAND_AS_LENGTH)
 };
 
+static bool globalsWriteEnable[GLOBAL_MAX_NUM] = { 0 };
+
 char *GlobalVariables_GetName(uint8_t id) {
     return globalsNames[id];
 }
@@ -42,6 +44,10 @@ char *GlobalVariables_GetType(uint8_t id) {
 
 uint16_t GlobalVariables_GetLength(uint8_t id) {
     return globalsLengths[id];
+}
+
+void GlobalVariables_SetWriteEnable(uint8_t id, bool enable) {
+    globalsWriteEnable[id] = enable;
 }
 
 void GlobalVariables_Read(uint8_t id, void *dest) {
@@ -65,7 +71,7 @@ void GlobalVariables_Read(uint8_t id, void *dest) {
     }
 }
 
-void GlobalVariables_Write(uint8_t id, void *src) {
+static void WriteVariable(uint8_t id, void *src) {
     if (strcmp("uint8_t", globalsTypes[id]) == 0) {
         *(uint8_t *)globalsList[id] = *(uint8_t *)src;
     }
@@ -86,7 +92,21 @@ void GlobalVariables_Write(uint8_t id, void *src) {
     }
 }
 
+void GlobalVariables_Write(uint8_t id, void *src) {
+    if (globalsWriteEnable[id]) {
+        WriteVariable(id, src);
+    }
+}
+
+void GlobalVariables_DebugWrite(uint8_t id, void *src) {
+    WriteVariable(id, src);
+}
+
 void GlobalVariables_Init(void) {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_INITIALIZATION)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_INITIALIZATION)
+
+    for (uint8_t id = 0; id < GLOBAL_MAX_NUM; id++) {
+        globalsWriteEnable[id] = true;
+    }
 }

@@ -52,8 +52,10 @@ enum {
 char *GlobalVariables_GetName(uint8_t id);
 char *GlobalVariables_GetType(uint8_t id);
 uint16_t GlobalVariables_GetLength(uint8_t id);
+void GlobalVariables_SetWriteEnable(uint8_t id, bool enable);
 void GlobalVariables_Read(uint8_t id, void *dest);
 void GlobalVariables_Write(uint8_t id, void *src);
+void GlobalVariables_DebugWrite(uint8_t id, void *src);
 void GlobalVariables_Init(void);
 
 #endif

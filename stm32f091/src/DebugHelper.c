@@ -14,7 +14,7 @@ enum {
 
 static bool ProcessRead(char **words) {
     bool actionTaken = false;
-    for (uint8_t id = 0; id < GLOBAL_MAX_NUM; id++) {
+    for (uint8_t id = 0; id < Global_NumberOfIds; id++) {
         if (strcasecmp(words[1], GlobalVariables_GetName(id)) == 0) {
             if (strcmp("uint8_t", GlobalVariables_GetType(id)) == 0) {
                 uint8_t value = 0;
@@ -62,7 +62,7 @@ static bool ProcessRead(char **words) {
 
 static bool ProcessWrite(char **words) {
     bool actionTaken = false;
-    for (uint8_t id = 0; id < GLOBAL_MAX_NUM; id++) {
+    for (uint8_t id = 0; id < Global_NumberOfIds; id++) {
         if (strcasecmp(words[1], GlobalVariables_GetName(id)) == 0) {
             if (strcmp("uint8_t", GlobalVariables_GetType(id)) == 0) {
                 uint8_t value = (uint8_t) strtol(words[2], NULL, 10);
@@ -103,7 +103,7 @@ static bool ProcessWrite(char **words) {
 
 static bool ProcessEnable(char **words, bool enable) {
     bool actionTaken = false;
-    for (uint8_t id = 0; id < GLOBAL_MAX_NUM; id++) {
+    for (uint8_t id = 0; id < Global_NumberOfIds; id++) {
         if (strcasecmp(words[1], GlobalVariables_GetName(id)) == 0) {
             GlobalVariables_SetWriteEnable(id, enable);
             actionTaken = true;

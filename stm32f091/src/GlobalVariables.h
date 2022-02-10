@@ -46,7 +46,7 @@
 enum {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_ENUM)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ENUM)
-    GLOBAL_MAX_NUM
+    Global_NumberOfIds
 };
 
 char *GlobalVariables_GetName(uint8_t id);

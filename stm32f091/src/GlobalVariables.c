@@ -12,27 +12,27 @@
 GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_VARIABLE)
 GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_VARIABLE)
 
-static void *globalsList[GLOBAL_MAX_NUM] = {
+static void *globalsList[Global_NumberOfIds] = {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_ADDRESS)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_ADDRESS)
 };
 
-static char *globalsNames[GLOBAL_MAX_NUM] = {
+static char *globalsNames[Global_NumberOfIds] = {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_STRING)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_STRING)
 };
 
-static char *globalsTypes[GLOBAL_MAX_NUM] = {
+static char *globalsTypes[Global_NumberOfIds] = {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_TYPE)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_TYPE)
 };
 
-static uint16_t globalsLengths[GLOBAL_MAX_NUM] = {
+static uint16_t globalsLengths[Global_NumberOfIds] = {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_LENGTH)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_LENGTH)
 };
 
-static bool globalsWriteEnable[GLOBAL_MAX_NUM] = { 0 };
+static bool globalsWriteEnable[Global_NumberOfIds] = { 0 };
 
 char *GlobalVariables_GetName(uint8_t id) {
     return globalsNames[id];
@@ -106,7 +106,7 @@ void GlobalVariables_Init(void) {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_INITIALIZATION)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_INITIALIZATION)
 
-    for (uint8_t id = 0; id < GLOBAL_MAX_NUM; id++) {
+    for (uint8_t id = 0; id < Global_NumberOfIds; id++) {
         globalsWriteEnable[id] = true;
     }
 }

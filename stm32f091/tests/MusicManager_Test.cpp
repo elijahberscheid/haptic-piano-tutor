@@ -41,11 +41,23 @@ static const Note_t channel5[] = {
     { .key = Key_Invalid, .length = 0, .finger = 0 }
 };
 
+static const Note_t channel6[] = {
+    { .key = Key_C3, .length = NoteLength_Half, .finger = Finger_Left5 },
+    { .key = Key_Invalid, .length = 0, .finger = 0 }
+};
+
+static const Note_t channel7[] = {
+    { .key = Key_D5, .length = NoteLength_Half, .finger = Finger_Right5 },
+    { .key = Key_C5, .length = NoteLength_Half, .finger = Finger_Right4 },
+    { .key = Key_Invalid, .length = 0, .finger = 0 }
+};
+
 static const Song_t songs[] = {
     { .defaultTempo = 60, .channels = { channel1, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
     { .defaultTempo = 80, .channels = { channel2, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
     { .defaultTempo = 80, .channels = { channel2, channel3, NULL, NULL, NULL, NULL, NULL, NULL } },
-    { .defaultTempo = 80, .channels = { channel4, channel5, NULL, NULL, NULL, NULL, NULL, NULL } }
+    { .defaultTempo = 80, .channels = { channel4, channel5, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { .defaultTempo = 80, .channels = { channel6, channel7, NULL, NULL, NULL, NULL, NULL, NULL } }
 };
 
 static const MusicManagerConfig_t config = { .songs = songs };
@@ -181,6 +193,41 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannel) { // for music with s
     expected[Finger_Left1] = Key_Rest;
     expected[Finger_Right5] = Key_F5;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+}
+
+TEST(MusicManager, ShouldRequestRestWhenEndOfChannelIsReached) {
+    uint8_t index = 4;
+    GlobalVariables_Write(Global_SongIndex, &index);
+
+    ChangeSoundDetectedSignal();
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    expected[Finger_Right4] = Key_C5;
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+}
+
+TEST(MusicManager, ShouldRequestRestWhenEndOfSongIsReached) {
+    uint8_t index = 4;
+    GlobalVariables_Write(Global_SongIndex, &index);
+
+    ChangeSoundDetectedSignal();
+    ChangeSoundDetectedSignal();
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+
+    ChangeSoundDetectedSignal();
     CheckDesiredFingerPositions(expected, actual);
 }
 

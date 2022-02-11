@@ -1,6 +1,17 @@
 .metadata/
+RemoteSystemsTempFiles/
+Debug/
+Release/
+CMSIS/
+startup/
+StdPeriph_Driver/
+LinkerScript.ld
+.cproject
+.project
+.settings/
+*.cfg
+*.swp
 
-# other useful ignores from https://github.com/github/gitignore/blob/master/C.gitignore
 # Prerequisites
 *.d
 
@@ -53,7 +64,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-
 
 # from https://github.com/jwgrenning/cpputest-starter-project
 .DS_Store

@@ -9,27 +9,29 @@ enum {
 GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_VARIABLE)
 GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_VARIABLE)
 
-static void * const globalsList[GLOBAL_MAX_NUM] = {
+static void * const globalsList[Global_NumberOfIds] = {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_ADDRESS)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_ADDRESS)
 };
 
-static char * const globalsNames[GLOBAL_MAX_NUM] = {
+static char * const globalsNames[Global_NumberOfIds] = {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_STRING)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_STRING)
 };
 
-static char * const globalsTypes[GLOBAL_MAX_NUM] = {
+static char * const globalsTypes[Global_NumberOfIds] = {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_TYPE)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_TYPE)
 };
 
-static uint16_t const globalsLengths[GLOBAL_MAX_NUM] = {
+static uint16_t const globalsLengths[Global_NumberOfIds] = {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_LENGTH)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_LENGTH)
 };
 
-static GlobalVariables_Subscription_t subscriptionList[GLOBAL_MAX_NUM][MAX_NUM_SUBSCRIPTIONS] = {{{ 0 }}};
+static bool globalsWriteEnable[Global_NumberOfIds] = { 0 };
+
+static GlobalVariables_Subscription_t subscriptionList[Global_NumberOfIds][MAX_NUM_SUBSCRIPTIONS] = {{{ 0 }}};
 
 char *GlobalVariables_GetName(uint8_t id) {
     return globalsNames[id];
@@ -41,6 +43,10 @@ char *GlobalVariables_GetType(uint8_t id) {
 
 uint16_t GlobalVariables_GetLength(uint8_t id) {
     return globalsLengths[id];
+}
+
+void GlobalVariables_SetWriteEnable(uint8_t id, bool enable) {
+    globalsWriteEnable[id] = enable;
 }
 
 void GlobalVariables_Read(uint8_t id, void *dest) {
@@ -64,7 +70,7 @@ void GlobalVariables_Read(uint8_t id, void *dest) {
     }
 }
 
-void GlobalVariables_Write(uint8_t id, void *src) {
+static void WriteVariable(uint8_t id, void *src) {
     bool valueWritten = false;
     bool valueChanged = false;
 
@@ -123,6 +129,16 @@ void GlobalVariables_Write(uint8_t id, void *src) {
     }
 }
 
+void GlobalVariables_Write(uint8_t id, void *src) {
+    if (globalsWriteEnable[id]) {
+        WriteVariable(id, src);
+    }
+}
+
+void GlobalVariables_DebugWrite(uint8_t id, void *src) {
+    WriteVariable(id, src);
+}
+
 void GlobalVariables_Subscribe(uint8_t id, const GlobalVariables_Subscription_t *subscription) {
     bool subscribed = false;
     for (uint8_t i = 0; i < MAX_NUM_SUBSCRIPTIONS; i++) {
@@ -157,5 +173,9 @@ void GlobalVariables_Unsubscribe(uint8_t id, const GlobalVariables_Subscription_
 void GlobalVariables_Init(void) {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_PRIMITIVE_INITIALIZATION)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ARRAY_INITIALIZATION)
-    memset(subscriptionList, 0, sizeof(**subscriptionList) * GLOBAL_MAX_NUM * MAX_NUM_SUBSCRIPTIONS); // make sure subscription list is cleared, for testing
+    memset(subscriptionList, 0, sizeof(**subscriptionList) * Global_NumberOfIds * MAX_NUM_SUBSCRIPTIONS); // make sure subscription list is cleared, for testing
+
+    for (uint8_t id = 0; id < Global_NumberOfIds; id++) {
+        globalsWriteEnable[id] = true;
+    }
 }

@@ -26,10 +26,10 @@
     _type _name[_array_length];
 
 #define EXPAND_AS_PRIMITIVE_ADDRESS(_name, _type, _array_length) \
-    &_name,
+    &(_name),
 
 #define EXPAND_AS_ARRAY_ADDRESS(_name, _type, _array_length) \
-    _name,
+    (_name),
 
 #define EXPAND_AS_STRING(_name, _type, _array_length) \
     #_name,
@@ -41,7 +41,7 @@
     #_type"["#_array_length"]",
 
 #define EXPAND_AS_LENGTH(_name, _type, _array_length) \
-    _array_length,
+    (_array_length),
 
 #define EXPAND_AS_PRIMITIVE_INITIALIZATION(_name,_type, _array_size) \
     memset(&_name, 0, sizeof(_name));
@@ -52,7 +52,7 @@
 enum {
     GLOBALS_PRIMITIVE_TABLE(EXPAND_AS_ENUM)
     GLOBALS_ARRAY_TABLE(EXPAND_AS_ENUM)
-    GLOBAL_MAX_NUM
+    Global_NumberOfIds
 };
 
 typedef void (*Callback)(void * context, const void *data);
@@ -65,8 +65,10 @@ typedef struct {
 char *GlobalVariables_GetName(uint8_t id);
 char *GlobalVariables_GetType(uint8_t id);
 uint16_t GlobalVariables_GetLength(uint8_t id);
+void GlobalVariables_SetWriteEnable(uint8_t id, bool enable);
 void GlobalVariables_Read(uint8_t id, void *dest);
 void GlobalVariables_Write(uint8_t id, void *src);
+void GlobalVariables_DebugWrite(uint8_t id, void *src);
 void GlobalVariables_Subscribe(uint8_t id, const GlobalVariables_Subscription_t *subscription);
 void GlobalVariables_Unsubscribe(uint8_t id, const GlobalVariables_Subscription_t *subscription);
 void GlobalVariables_Init(void);

@@ -17,7 +17,7 @@ enum {
     PdnPin = 11,
     WakeupPin = 12
     // The USART pins are not in this enum on purpose,
-    // because changing the USART pins may also require the alternate function used and the USART peripheral used to change
+    // because changing the USART pins may also require the alternate function used and the USART channel used to change
 };
 
 // Example of configuration string:
@@ -101,14 +101,13 @@ void EXTI4_15_IRQHandler(void) {
             memset(instance.rxBuffer, 0, RxBufferLength * sizeof(*instance.rxBuffer));
             instance.rxIndex = 0;
         }
-
     }
 }
 
 // using strlen() on message to find its length does not suffice,
 // because configuration messages require a null terminator to be sent
 void Ble_SendString(char *message, uint8_t length) {
-    GPIOB->BRR = 1 << 12; // wakeup
+    GPIOB->BRR = 1 << WakeupPin; // wakeup low to indicate start sending
     TIM16->CR1 |= TIM_CR1_CEN; // turn on timer for a delay of at least 1 ms before sending message
 
     instance.txMessage = message;

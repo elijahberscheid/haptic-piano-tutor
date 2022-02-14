@@ -1,5 +1,6 @@
 #include "stm32f0xx.h"
 #include <stdlib.h>
+#include "Ble.h"
 #include "DebugHelper.h"
 #include "haptic-piano-tutor-library/src/tty.h"
 #include "modules/GlobalVariables.h"
@@ -23,11 +24,13 @@ int main(void)
 {
     tty_init();
     GlobalVariables_Init();
+    Ble_Init();
     MusicManager_Init(&musicManager, &config);
 
     int i = 0;
     for(;;) {
         DebugHelper_Run();
+        Ble_Run();
         i++;
     }
 }

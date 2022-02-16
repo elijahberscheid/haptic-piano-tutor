@@ -36,9 +36,19 @@ static void DesiredPositionsChanged(void *context, const void *data) {
     WriteDistances();
 }
 
+static void FingerPositionsChanged(void *context, const void *data) {
+    IGNORE(context);
+    IGNORE(data);
+
+    WriteDistances();
+}
+
 void FingerDistanceCalculator_Init(void) {
-    const GlobalVariables_Subscription_t desiredPositionSubscription = { .context = NULL, .callback = DesiredPositionsChanged };
-    GlobalVariables_Subscribe(Global_DesiredFingerPositions, &desiredPositionSubscription);
+    const GlobalVariables_Subscription_t desiredPositionsSubscription = { .context = NULL, .callback = DesiredPositionsChanged };
+    GlobalVariables_Subscribe(Global_DesiredFingerPositions, &desiredPositionsSubscription);
+
+    const GlobalVariables_Subscription_t fingerPositionsSubscription = { .context = NULL, .callback = FingerPositionsChanged };
+    GlobalVariables_Subscribe(Global_FingerPositions, &fingerPositionsSubscription);
 
     WriteDistances();
 }

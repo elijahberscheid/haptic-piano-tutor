@@ -66,4 +66,5 @@ LinkerScript.ld
 .settings/
 *.cfg
 *.swp
-
+.vim/
+tags

@@ -5,7 +5,8 @@
 #include "Note.h"
 
 enum {
-    Song_MaxConcurrentNotes = 8
+    Song_MaxConcurrentNotes = 8,
+    Song_NumberOfSongs = 2
 };
 
 typedef struct {

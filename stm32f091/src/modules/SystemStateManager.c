@@ -5,15 +5,14 @@
 
 #define IGNORE(x) ((void)x)
 
-static void RightButtonPressed(void *context, const void *data) {
-    IGNORE(context);
-    IGNORE(data);
+enum {
+    RightButtonAction,
+    StartButtonAction,
+};
 
-    SystemState_t state = 0;
-    GlobalVariables_Read(Global_SystemState, &state);
-
-    switch (state) {
-        case SystemState_Idle: {
+static void State_Idle(uint8_t action) {
+    switch (action) {
+        case RightButtonAction: {
             uint8_t songIndex = 0;
             GlobalVariables_Read(Global_SongIndex, &songIndex);
             songIndex++;
@@ -23,11 +22,50 @@ static void RightButtonPressed(void *context, const void *data) {
             GlobalVariables_Write(Global_SongIndex, &songIndex);
             break;
         }
-        case SystemState_Running: {
+        case StartButtonAction: {
+            SystemState_t state = SystemState_Running;
+            GlobalVariables_Write(Global_SystemState, &state);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+static void State_Running(uint8_t action) {
+    switch (action) {
+        case RightButtonAction: {
             uint8_t noteForwardSignal = 0;
             GlobalVariables_Read(Global_NoteForwardSignal, &noteForwardSignal);
             noteForwardSignal++;
             GlobalVariables_Write(Global_NoteForwardSignal, &noteForwardSignal);
+            break;
+        }
+        case StartButtonAction: {
+            SystemState_t state = SystemState_Paused;
+            GlobalVariables_Write(Global_SystemState, &state);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+static void RightButtonPressed(void *context, const void *data) {
+    IGNORE(context);
+    IGNORE(data);
+
+    uint8_t action = RightButtonAction;
+    SystemState_t state = 0;
+    GlobalVariables_Read(Global_SystemState, &state);
+
+    switch (state) {
+        case SystemState_Idle: {
+            State_Idle(action);
+            break;
+        }
+        case SystemState_Running: {
+            State_Running(action);
             break;
         }
         default:
@@ -39,18 +77,17 @@ static void StartButtonPressed(void *context, const void *data) {
     IGNORE(context);
     IGNORE(data);
 
+    uint8_t action = StartButtonAction;
     SystemState_t state = 0;
     GlobalVariables_Read(Global_SystemState, &state);
 
     switch (state) {
         case SystemState_Idle: {
-            state = SystemState_Running;
-            GlobalVariables_Write(Global_SystemState, &state);
+            State_Idle(action);
             break;
         }
         case SystemState_Running: {
-            state = SystemState_Paused;
-            GlobalVariables_Write(Global_SystemState, &state);
+            State_Running(action);
             break;
         }
         default:

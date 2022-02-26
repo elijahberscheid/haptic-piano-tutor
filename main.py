@@ -9,12 +9,18 @@ import cv2
 import mediapipe as mp
 import time
 import threading
+import numpy as np
 # Prerequisites: sudo apt-get install libglib2.0-dev; sudo pip install bluepy
 # References: https://elinux.org/RPi_Bluetooth_LE, https://ianharvey.github.io/bluepy-doc/
 from bluepy import btle
 # Prerequisites: sudo pip install RPi.GPIO
 # References: https://pypi.org/project/RPi.GPIO/ 
 import RPi.GPIO as GPIO
+
+# Assuming a height of 31" from piano keyboard to camera lens
+# Establish resolution dimensions for the USB
+camX = 1920
+camY = 700
 
 # Establish a BLE pairing with the MCU
 def establishBLE():
@@ -37,6 +43,7 @@ def establishBLE():
             loopVar = False
         except btle.BTLEDisconnectError:
             print("Connection Attempt " + str(atm) + " Failed")
+            GPIO.output(18, 0) # Pin 18 (Blue LED) off
         atm += 1
 
 # The following function initializes the USB camera, aiming to optimize fps
@@ -44,9 +51,11 @@ def establishBLE():
 # OpenCV forum "OpenCV Camera Low FPS" on Dec 3, 2020.
 # Link: forum.opencv.org/t/opencv-camera-low-fps/567/3
 def initCamera():
-    camera = cv2.VideoCapture(0, cv2.CAP_V4L2)
-    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1600) # x
-    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 300) # y
+    camera = cv2.VideoCapture(0)
+    global camX
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, camX) # x
+    global camY
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, camY) # y
     # Note: camera display of piano keyboard intended to NOT be inverted
     camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
     camera.set(cv2.CAP_PROP_FPS, 60)
@@ -56,8 +65,61 @@ def initCamera():
 # Given a picture from the USB camera, this function generates the expected piano key
 # locations and returns them in the keyContours data structure. As an 88-key piano is
 # expected, the keyContours structure will have 88 entries.
-def expectedKeyGeneration(img):
+def expectedKeyGeneration(cap):
     keyContours = []
+    success, img = cap.read()
+    for _ in range(10):
+        success, img = cap.read()
+    if np.size(img) > 0:
+        # First find green retroreflective tape coordinates
+        # https://techvidvan.com/tutorials/detect-objects-of-similar-color-using-opencv-in-python/
+        # convert to hsv colorspace
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        # lower bound and upper bound for Green color
+        lower_bound = np.array([60, 115, 60])   
+        upper_bound = np.array([100, 255, 255])
+        # Values for 477 Lab Testing
+        #lower_bound = np.array([60, 115, 60])   
+        #upper_bound = np.array([100, 255, 255])    
+        # find the colors within the boundaries
+        mask = cv2.inRange(hsv, lower_bound, upper_bound)
+        #define kernel size  
+        kernel = np.ones((8,8),np.uint8)
+        # Remove unnecessary noise from mask
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        # Segment only the detected region
+        segmented_img = cv2.bitwise_and(img, img, mask=mask)
+        # Find contours from the mask
+        contours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Print contours, debugging purposes
+        print(contours)
+        output = cv2.drawContours(segmented_img, contours, -1, (0, 0, 255), 3)
+        # Showing the output, debugging purposes
+        cv2.imshow("Output", output)
+        # Determining which contours correspond to the tape
+        global camX
+        xLimit = .5*camX
+        xTolerance = .025*camX
+        sampleContourX = []
+        for contour in contours:
+            sampleContourX.append(contour[0][0][0])
+        matchingPairs = []
+        optimizer = 1
+        for sampledX1 in sampleContourX:
+            for sampledX2 in sampleContourX[optimizer :]:
+                if(sampledX1 < sampledX2):
+                    if(sampledX1 + xTolerance >= sampledX2):
+                        matchingPairs.append((sampledX1, sampledX2))    
+                else:
+                    if(sampledX1 - xTolerance <= sampledX2):
+                        matchingPairs.append((sampledX1, sampledX2))
+            optimizer += 1         
+        print(sampleContourX)
+        print(matchingPairs)
+    else:
+        BleTrasmitError(0)
+        print("***Error Occured*** expectedKeyGeneration USB Camera Error")
     return keyContours
 
 # Given the keyContours structure, detailing the expected piano key pixel locations, and
@@ -149,8 +211,26 @@ currentlmLocations = [88, 88, 88, 88, 88, 88, 88, 88, 88, 88] # All landmark loc
 
 # Interrupt function, transmits the data in currentlmLocations to the MCU at 10 Hz
 def BleTransmit():
-    print(time.time())
+    a = 0
+    return a
 
+# Called upon to transmit an error packet in the event of a calibration error
+def BleTransmitError(code):
+    # USB Camera Error
+    if(code == 0):
+        try:
+            writeCharacteristic.write(bytes("error code 0"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
+    # Retroreflective Tape Detection Error
+    elif(code == 1):
+        try:
+            writeCharacteristic.write(bytes("error code 1"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
+    
 # Main function
 def main():
     # Bluetooth Initialization 
@@ -159,12 +239,16 @@ def main():
     #GPIO.output(18, 0) # Ensure blue LED is off
     #establishBLE()
     
+    # Bluetooth Error Code Testing
+    #BleTransmitError(0)
+    #BleTransmitError(1)
+    
     # Camera Initialization
     cap = initCamera()
 
     # Expected Key Location Generation
-    success, img = cap.read()
-    #keyContours = expectedKeyGeneration(img)
+    keyContours = expectedKeyGeneration(cap)
+    print("Done")
 
     # Variable Initializations
     pTime = 0
@@ -173,8 +257,6 @@ def main():
     countFPS = 0
     prevFPS = 0
     detector = handDetector()
-    blepTime = 0
-    blecTime = 0
     
     # BLE Transmission Initialization
     threading.Timer(0.1, lambda: BleTransmit()).start() # start a timer on a new thread for BLE transmission at 10 Hz 
@@ -183,34 +265,32 @@ def main():
     while True:
         # Reading of camera, finding position of hands/fingers
         success, img = cap.read()
-        img = detector.findHands(img)
-        lmList = detector.findPosition(img)
+        if np.size(img) > 0:
+            img = detector.findHands(img)
+            lmList = detector.findPosition(img)
         
-        # BLE Transmission Logic
-        blecTime = time.time()
-        if(blecTime - blepTime > 0.1):
-            threading.Timer(0.1, lambda: BleTransmit()).start()
-            blepTime = blecTime
-            
-        # Processing time display logic, mainly for debugging purposes
-        cTime = time.time()
-        fps = 1 / (cTime - pTime)
-        pTime = cTime
-        sumFPS += fps
-        countFPS += 1
-        avgFPS = round(sumFPS/countFPS)
-        if(avgFPS != prevFPS and countFPS > 5):
-            print("Average Processing Time: " + str(avgFPS) + " Hz")
-        prevFPS = avgFPS
-        cv2.putText(img, (str(int(avgFPS)) + " Hz"), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
+            # BLE Transmission Logic
+            threading.Timer(0, lambda: BleTransmit()).start()
+
+            # Processing time display logic, mainly for debugging purposes
+            cTime = time.time()
+            fps = 1 / (cTime - pTime)
+            pTime = cTime
+            sumFPS += fps
+            countFPS += 1
+            avgFPS = round(sumFPS/countFPS)
+            if(avgFPS != prevFPS and countFPS > 5):
+                print("Average Processing Time: " + str(avgFPS) + " Hz")
+            prevFPS = avgFPS
+            #cv2.putText(img, (str(int(avgFPS)) + " Hz"), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
         
-        # Match fingertip lanmark locations to expected key locations
-        #global currentlmLocations
-        #currentlmLocations = matchLocations(keyContours, lmList)
+            # Match fingertip lanmark locations to expected key locations
+            #global currentlmLocations
+            #currentlmLocations = matchLocations(keyContours, lmList)
         
-        # Computer vision pipeline output, mainly for debugging purposes
-        #cv2.imshow("Image", img)
-        cv2.waitKey(1)
+            # Computer vision pipeline output, mainly for debugging purposes
+            cv2.imshow("Image", img)
+            cv2.waitKey(1)
 
 if __name__ == '__main__':
     main()

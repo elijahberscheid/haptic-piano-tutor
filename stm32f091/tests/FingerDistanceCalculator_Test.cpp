@@ -89,3 +89,24 @@ TEST(FingerDistanceCalculator, ShouldSetDistancesWhenFingerPositionsChange) {
     CheckDistances(expected, actual);
 }
 
+TEST(FingerDistanceCalculator, ShouldSetDistancesToRestForFingersThatAreNotDetected) {
+    uint8_t positions[] = {
+        Key_G1, Key_A2, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_C7, Key_D7
+    };
+    GlobalVariables_Write(Global_DesiredFingerPositions, &positions);
+
+    uint8_t fingerPositions[] = {
+        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid,
+        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid
+    };
+    GlobalVariables_Write(Global_FingerPositions, &fingerPositions);
+
+    int8_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    int8_t actual[DistanceArrayLength] = { 0 };
+    GlobalVariables_Read(Global_FingerDistances, actual);
+    CheckDistances(expected, actual);
+}

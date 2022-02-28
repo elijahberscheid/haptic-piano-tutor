@@ -7,6 +7,7 @@ enum {
     SystemState_Idle,
     SystemState_Running,
     SystemState_Paused,
+    SystemState_CalibrationError,
     SystemState_NumberOfStates
 };
 typedef uint8_t SystemState_t; // assumed to be uint8_t in GlobalVariables.h

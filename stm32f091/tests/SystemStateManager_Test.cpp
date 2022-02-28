@@ -36,7 +36,7 @@ TEST_GROUP(SystemStateManager) {
         GlobalVariables_Write(Global_RightButtonSignal, &signal);
     }
 
-    void CheckStateIs(uint8_t actual) {
+    void CheckStateIs(SystemState_t actual) {
         SystemState_t expected;
         GlobalVariables_Read(Global_SystemState, &expected);
         CHECK_EQUAL(expected, actual);
@@ -53,6 +53,43 @@ TEST(SystemStateManager, ShouldSetStateToIdleOnInit) {
     CheckStateIs(SystemState_Idle);
 }
 
+TEST(SystemStateManager, ShouldTransitionIdleToErrorOnCalibrationError) {
+    bool error = true;
+    GlobalVariables_Write(Global_CalibrationError, &error);
+
+    CheckStateIs(SystemState_CalibrationError);
+}
+
+TEST(SystemStateManager, ShouldTransitionRunningToErrorOnCalibrationError) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    bool error = true;
+    GlobalVariables_Write(Global_CalibrationError, &error);
+
+    CheckStateIs(SystemState_CalibrationError);
+}
+
+TEST(SystemStateManager, ShouldTransitionPausedToErrorOnCalibrationError) {
+    SystemState_t state = SystemState_Paused;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    bool error = true;
+    GlobalVariables_Write(Global_CalibrationError, &error);
+
+    CheckStateIs(SystemState_CalibrationError);
+}
+
+TEST(SystemStateManager, ShouldTransitionToIdleWhenCalibrationErrorCleared) {
+    bool error = true;
+    GlobalVariables_Write(Global_CalibrationError, &error);
+
+    error = false;
+    GlobalVariables_Write(Global_CalibrationError, &error);
+
+    CheckStateIs(SystemState_Idle);
+}
+
 TEST(SystemStateManager, ShouldTransitionIdleToRunningWhenStartPressed) {
     PressStartButton();
 
@@ -60,7 +97,9 @@ TEST(SystemStateManager, ShouldTransitionIdleToRunningWhenStartPressed) {
 }
 
 TEST(SystemStateManager, ShouldTransitionRunningToPausedWhenStartPressed) {
-    PressStartButton();
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+
     PressStartButton();
 
     CheckStateIs(SystemState_Paused);
@@ -83,7 +122,8 @@ TEST(SystemStateManager, ShouldWrapAroundSongIndexInIdleWhenRightPressed) {
 }
 
 TEST(SystemStateManager, ShouldMoveForwardOneNoteInRunningWhenRightPressed) {
-    PressStartButton();
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
 
     uint8_t originalForwardSignal;
     GlobalVariables_Read(Global_NoteForwardSignal, &originalForwardSignal);

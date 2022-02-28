@@ -10,6 +10,7 @@
     ENTRY(IsPlayingSong,            bool,       0) \
     ENTRY(SongIndex,                uint8_t,    0) \
     ENTRY(SystemState,              uint8_t,    0) \
+    ENTRY(CalibrationError,         bool,       0) \
     ENTRY(DebugButtonSignal,        uint8_t,    0) \
     ENTRY(RightButtonSignal,        uint8_t,    0) \
     ENTRY(StartButtonSignal,        uint8_t,    0) \

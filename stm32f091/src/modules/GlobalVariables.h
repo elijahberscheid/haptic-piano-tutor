@@ -11,8 +11,10 @@
     ENTRY(SongIndex,                uint8_t,    0) \
     ENTRY(SystemState,              uint8_t,    0) \
     ENTRY(CalibrationError,         bool,       0) \
+    ENTRY(HandedMode,               uint8_t,    0) \
     ENTRY(DebugButtonSignal,        uint8_t,    0) \
     ENTRY(RightButtonSignal,        uint8_t,    0) \
+    ENTRY(ModeButtonSignal,         uint8_t,    0) \
     ENTRY(StartButtonSignal,        uint8_t,    0) \
     ENTRY(NoteForwardSignal,        uint8_t,    0) \
     ENTRY(NoteBackwardSignal,       uint8_t,    0) \
@@ -22,6 +24,7 @@
     ENTRY(FingerPositions,          uint8_t,    10) \
     ENTRY(DesiredFingerPositions,   uint8_t,    10) \
     ENTRY(FingerDistances,          int8_t,     10) \
+    ENTRY(ResolvedFingerDistances,  int8_t,     10) \
 
 #define EXPAND_AS_ENUM(_name, _type, _array_length) \
     Global_##_name,

@@ -16,10 +16,23 @@ TEST_GROUP(SystemStateManager) {
 
     void setup() {
         GlobalVariables_Init();
+        int8_t distances[] = {
+            -5, -4, -3, -2, -1,
+            1, 2, 3, 4, 5
+        };
+        GlobalVariables_Write(Global_FingerDistances, distances);
+
         SystemStateManager_Init();
     }
 
     void teardown() {
+    }
+
+    void PressModeButton() {
+        uint8_t signal = 0;
+        GlobalVariables_Read(Global_ModeButtonSignal, &signal);
+        signal++;
+        GlobalVariables_Write(Global_ModeButtonSignal, &signal);
     }
 
     void PressStartButton() {
@@ -46,6 +59,20 @@ TEST_GROUP(SystemStateManager) {
         uint8_t expected;
         GlobalVariables_Read(Global_SongIndex, &expected);
         CHECK_EQUAL(expected, actual);
+    }
+
+    void CheckModeIs(uint8_t actual) {
+        uint8_t expected;
+        GlobalVariables_Read(Global_HandedMode, &expected);
+        CHECK_EQUAL(expected, actual);
+    }
+
+    void CheckResolvedDistances(int8_t *expected) {
+        int8_t actual[DistanceArrayLength] = { 0 };
+        GlobalVariables_Read(Global_ResolvedFingerDistances, actual);
+        for (uint8_t i = 0; i < GlobalVariables_GetLength(Global_FingerDistances); i++) {
+            CHECK_EQUAL(expected[i], actual[i]);
+        }
     }
 };
 
@@ -90,6 +117,101 @@ TEST(SystemStateManager, ShouldTransitionToIdleWhenCalibrationErrorCleared) {
     CheckStateIs(SystemState_Idle);
 }
 
+TEST(SystemStateManager, ShouldCycleThroughModesInIdleWhenModePressed) {
+    CheckModeIs(HandedMode_Both);
+
+    PressModeButton();
+    CheckModeIs(HandedMode_Left);
+
+    PressModeButton();
+    CheckModeIs(HandedMode_Right);
+}
+
+TEST(SystemStateManager, ShouldCycleThroughModesInRunningWhenModePressed) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+    CheckModeIs(HandedMode_Both);
+
+    PressModeButton();
+    CheckModeIs(HandedMode_Left);
+
+    PressModeButton();
+    CheckModeIs(HandedMode_Right);
+}
+
+TEST(SystemStateManager, ShouldCycleThroughModesInPausedWhenModePressed) {
+    SystemState_t state = SystemState_Paused;
+    GlobalVariables_Write(Global_SystemState, &state);
+    CheckModeIs(HandedMode_Both);
+
+    PressModeButton();
+    CheckModeIs(HandedMode_Left);
+
+    PressModeButton();
+    CheckModeIs(HandedMode_Right);
+}
+
+TEST(SystemStateManager, ShouldResolveFingerDistancesOnInit) {
+    int8_t distances[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+    };
+    CheckResolvedDistances(distances);
+}
+
+TEST(SystemStateManager, ShouldResolveFingerDistancesWhenDistancesChange) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    int8_t distances[] = {
+        -5, -5, -5, -5, -5,
+        5, 5, 5, 5, 5
+    };
+    GlobalVariables_Write(Global_FingerDistances, distances);
+
+    CheckResolvedDistances(distances);
+}
+
+TEST(SystemStateManager, ShouldResolveFingerDistancesWhenModeChangesToLeftHanded) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+    HandedMode_t mode = HandedMode_Left;
+    GlobalVariables_Write(Global_HandedMode, &mode);
+
+    int8_t expected[] = {
+        -5, -4, -3, -2, -1,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    CheckResolvedDistances(expected);
+}
+
+TEST(SystemStateManager, ShouldResolveFingerDistancesWhenModeChangesToRightHanded) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+    HandedMode_t mode = HandedMode_Right;
+    GlobalVariables_Write(Global_HandedMode, &mode);
+
+    int8_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        1, 2, 3, 4, 5
+    };
+    CheckResolvedDistances(expected);
+}
+
+TEST(SystemStateManager, ShouldResolveFingerDistancesToRestWhenStateIsNotRunning) {
+    int8_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+    };
+
+    for (SystemState_t state = 0; state < SystemState_NumberOfStates; state++) {
+        if (state != SystemState_Idle) {
+            GlobalVariables_Write(Global_SystemState, &state);
+            CheckResolvedDistances(expected);
+        }
+    }
+}
+
 TEST(SystemStateManager, ShouldTransitionIdleToRunningWhenStartPressed) {
     PressStartButton();
 
@@ -103,6 +225,15 @@ TEST(SystemStateManager, ShouldTransitionRunningToPausedWhenStartPressed) {
     PressStartButton();
 
     CheckStateIs(SystemState_Paused);
+}
+
+TEST(SystemStateManager, ShouldTransitionPausedToRunningWhenStartPressed) {
+    SystemState_t state = SystemState_Paused;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    PressStartButton();
+
+    CheckStateIs(SystemState_Running);
 }
 
 TEST(SystemStateManager, ShouldChangeSongInIdleWhenRightPressed) {

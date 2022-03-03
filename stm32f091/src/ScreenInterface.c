@@ -187,7 +187,6 @@ static void SongIndexChanged(void *context, const void *data) {
     }
 }
 
-
 static void SPI1_Init(void) {
     // SPI1_NSS   PA15  AF0
     // RESET      PB0   output

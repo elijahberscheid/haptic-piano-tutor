@@ -28,11 +28,25 @@ TEST_GROUP(SystemStateManager) {
     void teardown() {
     }
 
+    void PressRightButton() {
+        uint8_t signal = 0;
+        GlobalVariables_Read(Global_RightButtonSignal, &signal);
+        signal++;
+        GlobalVariables_Write(Global_RightButtonSignal, &signal);
+    }
+
     void PressModeButton() {
         uint8_t signal = 0;
         GlobalVariables_Read(Global_ModeButtonSignal, &signal);
         signal++;
         GlobalVariables_Write(Global_ModeButtonSignal, &signal);
+    }
+
+    void PressTempoButton() {
+        uint8_t signal = 0;
+        GlobalVariables_Read(Global_TempoButtonSignal, &signal);
+        signal++;
+        GlobalVariables_Write(Global_TempoButtonSignal, &signal);
     }
 
     void PressStartButton() {
@@ -42,28 +56,21 @@ TEST_GROUP(SystemStateManager) {
         GlobalVariables_Write(Global_StartButtonSignal, &signal);
     }
 
-    void PressRightButton() {
-        uint8_t signal = 0;
-        GlobalVariables_Read(Global_RightButtonSignal, &signal);
-        signal++;
-        GlobalVariables_Write(Global_RightButtonSignal, &signal);
-    }
-
-    void CheckStateIs(SystemState_t actual) {
-        SystemState_t expected;
-        GlobalVariables_Read(Global_SystemState, &expected);
+    void CheckStateIs(SystemState_t expected) {
+        SystemState_t actual;
+        GlobalVariables_Read(Global_SystemState, &actual);
         CHECK_EQUAL(expected, actual);
     }
 
-    void CheckSongIndexIs(uint8_t actual) {
-        uint8_t expected;
-        GlobalVariables_Read(Global_SongIndex, &expected);
+    void CheckSongIndexIs(uint8_t expected) {
+        uint8_t actual;
+        GlobalVariables_Read(Global_SongIndex, &actual);
         CHECK_EQUAL(expected, actual);
     }
 
-    void CheckModeIs(uint8_t actual) {
-        uint8_t expected;
-        GlobalVariables_Read(Global_HandedMode, &expected);
+    void CheckModeIs(uint8_t expected) {
+        uint8_t actual;
+        GlobalVariables_Read(Global_HandedMode, &actual);
         CHECK_EQUAL(expected, actual);
     }
 
@@ -80,11 +87,19 @@ TEST(SystemStateManager, ShouldSetStateToIdleOnInit) {
     CheckStateIs(SystemState_Idle);
 }
 
-TEST(SystemStateManager, ShouldTransitionIdleToErrorOnCalibrationError) {
-    bool error = true;
-    GlobalVariables_Write(Global_CalibrationError, &error);
+TEST(SystemStateManager, ShouldTransitionFromAnyOtherStateToErrorOnCalibrationError) {
+    for (SystemState_t state = 0; state < SystemState_NumberOfStates; state++) {
+        if (state != SystemState_CalibrationError) {
+            bool error = false;
+            GlobalVariables_Write(Global_CalibrationError, &error);
 
-    CheckStateIs(SystemState_CalibrationError);
+            GlobalVariables_Write(Global_SystemState, &state);
+            error = true;
+            GlobalVariables_Write(Global_CalibrationError, &error);
+
+            CheckStateIs(SystemState_CalibrationError);
+        }
+    }
 }
 
 TEST(SystemStateManager, ShouldTransitionRunningToErrorOnCalibrationError) {
@@ -210,6 +225,21 @@ TEST(SystemStateManager, ShouldResolveFingerDistancesToRestWhenStateIsNotRunning
             CheckResolvedDistances(expected);
         }
     }
+}
+
+TEST(SystemStateManager, ShouldTransitionIdleToTempoWhenTempoPressed) {
+    PressTempoButton();
+
+    CheckStateIs(SystemState_Tempo);
+}
+
+TEST(SystemStateManager, ShouldTransitionTempoToIdleWhenTempoPressed) {
+    SystemState_t state = SystemState_Tempo;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    PressTempoButton();
+
+    CheckStateIs(SystemState_Idle);
 }
 
 TEST(SystemStateManager, ShouldTransitionIdleToRunningWhenStartPressed) {

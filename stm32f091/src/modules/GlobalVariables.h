@@ -15,6 +15,7 @@
     ENTRY(DebugButtonSignal,        uint8_t,    0) \
     ENTRY(RightButtonSignal,        uint8_t,    0) \
     ENTRY(ModeButtonSignal,         uint8_t,    0) \
+    ENTRY(TempoButtonSignal,        uint8_t,    0) \
     ENTRY(StartButtonSignal,        uint8_t,    0) \
     ENTRY(NoteForwardSignal,        uint8_t,    0) \
     ENTRY(NoteBackwardSignal,       uint8_t,    0) \

@@ -7,6 +7,7 @@ enum {
     SystemState_Idle,
     SystemState_Running,
     SystemState_Paused,
+    SystemState_Tempo,
     SystemState_CalibrationError,
     SystemState_NumberOfStates
 };

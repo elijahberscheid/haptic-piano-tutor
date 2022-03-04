@@ -8,6 +8,7 @@
 enum {
     RightButtonAction,
     ModeButtonAction,
+    TempoButtonAction,
     StartButtonAction,
     CalibrationErrorAction,
     DistanceArrayLength = 10
@@ -66,6 +67,11 @@ static void State_Idle(uint8_t action) {
         }
         case ModeButtonAction: {
             IncrementHandedMode();
+            break;
+        }
+        case TempoButtonAction: {
+            SystemState_t state = SystemState_Tempo;
+            GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
         case StartButtonAction: {
@@ -132,6 +138,32 @@ static void State_Paused(uint8_t action) {
     }
 }
 
+static void State_Tempo(uint8_t action) {
+    switch (action) {
+        case StartButtonAction: {
+            SystemState_t state = SystemState_Running;
+            GlobalVariables_Write(Global_SystemState, &state);
+            break;
+        }
+        case ModeButtonAction: {
+            IncrementHandedMode();
+            break;
+        }
+        case TempoButtonAction: {
+            SystemState_t state = SystemState_Idle;
+            GlobalVariables_Write(Global_SystemState, &state);
+            break;
+        }
+        case CalibrationErrorAction: {
+            SystemState_t state = SystemState_CalibrationError;
+            GlobalVariables_Write(Global_SystemState, &state);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 static void State_CalibrationError(uint8_t action) {
     switch (action) {
         case CalibrationErrorAction: {
@@ -165,6 +197,10 @@ static void RightButtonPressed(void *context, const void *data) {
             State_Paused(action);
             break;
         }
+        case SystemState_Tempo: {
+            State_Tempo(action);
+            break;
+        }
         case SystemState_CalibrationError: {
             State_CalibrationError(action);
             break;
@@ -193,6 +229,44 @@ static void ModeButtonPressed(void *context, const void *data) {
         }
         case SystemState_Paused: {
             State_Paused(action);
+            break;
+        }
+        case SystemState_Tempo: {
+            State_Tempo(action);
+            break;
+        }
+        case SystemState_CalibrationError: {
+            State_CalibrationError(action);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+static void TempoButtonPressed(void *context, const void *data) {
+    IGNORE(context);
+    IGNORE(data);
+
+    uint8_t action = TempoButtonAction;
+    SystemState_t state = 0;
+    GlobalVariables_Read(Global_SystemState, &state);
+
+    switch (state) {
+        case SystemState_Idle: {
+            State_Idle(action);
+            break;
+        }
+        case SystemState_Running: {
+            State_Running(action);
+            break;
+        }
+        case SystemState_Paused: {
+            State_Paused(action);
+            break;
+        }
+        case SystemState_Tempo: {
+            State_Tempo(action);
             break;
         }
         case SystemState_CalibrationError: {
@@ -225,6 +299,10 @@ static void StartButtonPressed(void *context, const void *data) {
             State_Paused(action);
             break;
         }
+        case SystemState_Tempo: {
+            State_Tempo(action);
+            break;
+        }
         case SystemState_CalibrationError: {
             State_CalibrationError(action);
             break;
@@ -253,6 +331,10 @@ static void CalibrationErrorChanged(void *context, const void *data) {
         }
         case SystemState_Paused: {
             State_Paused(action);
+            break;
+        }
+        case SystemState_Tempo: {
+            State_Tempo(action);
             break;
         }
         case SystemState_CalibrationError: {
@@ -284,6 +366,9 @@ void SystemStateManager_Init(void) {
 
     const GlobalVariables_Subscription_t modeButtonSubscription = { .context = NULL, .callback = ModeButtonPressed };
     GlobalVariables_Subscribe(Global_ModeButtonSignal, &modeButtonSubscription);
+
+    const GlobalVariables_Subscription_t tempoButtonSubscription = { .context = NULL, .callback = TempoButtonPressed };
+    GlobalVariables_Subscribe(Global_TempoButtonSignal, &tempoButtonSubscription);
 
     const GlobalVariables_Subscription_t startButtonSubscription = { .context = NULL, .callback = StartButtonPressed };
     GlobalVariables_Subscribe(Global_StartButtonSignal, &startButtonSubscription);

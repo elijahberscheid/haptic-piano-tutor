@@ -6,12 +6,16 @@
 #define IGNORE(x) ((void)x)
 
 enum {
+    LeftButtonAction,
     RightButtonAction,
     ModeButtonAction,
     TempoButtonAction,
     StartButtonAction,
     CalibrationErrorAction,
-    DistanceArrayLength = 10
+    DistanceArrayLength = 10,
+    DefaultTempo = 60,
+    MinTempo = 1,
+    MaxTempo = 255,
 };
 
 static void IncrementHandedMode(void) {
@@ -55,6 +59,18 @@ static void ResolveFingerDistances() {
 
 static void State_Idle(uint8_t action) {
     switch (action) {
+        case LeftButtonAction: {
+            uint8_t songIndex = 0;
+            GlobalVariables_Read(Global_SongIndex, &songIndex);
+            if (songIndex == 0) {
+                songIndex = Song_NumberOfSongs - 1;
+            }
+            else {
+                songIndex--;
+            }
+            GlobalVariables_Write(Global_SongIndex, &songIndex);
+            break;
+        }
         case RightButtonAction: {
             uint8_t songIndex = 0;
             GlobalVariables_Read(Global_SongIndex, &songIndex);
@@ -91,6 +107,13 @@ static void State_Idle(uint8_t action) {
 
 static void State_Running(uint8_t action) {
     switch (action) {
+        case LeftButtonAction: {
+            uint8_t noteBackwardSignal = 0;
+            GlobalVariables_Read(Global_NoteBackwardSignal, &noteBackwardSignal);
+            noteBackwardSignal++;
+            GlobalVariables_Write(Global_NoteBackwardSignal, &noteBackwardSignal);
+            break;
+        }
         case RightButtonAction: {
             uint8_t noteForwardSignal = 0;
             GlobalVariables_Read(Global_NoteForwardSignal, &noteForwardSignal);
@@ -140,6 +163,24 @@ static void State_Paused(uint8_t action) {
 
 static void State_Tempo(uint8_t action) {
     switch (action) {
+        case LeftButtonAction: {
+            uint8_t tempo = 0;
+            GlobalVariables_Read(Global_Tempo, &tempo);
+            if (tempo > MinTempo) {
+                tempo--;
+                GlobalVariables_Write(Global_Tempo, &tempo);
+            }
+            break;
+        }
+        case RightButtonAction: {
+            uint8_t tempo = 0;
+            GlobalVariables_Read(Global_Tempo, &tempo);
+            if (tempo < MaxTempo) {
+                tempo++;
+                GlobalVariables_Write(Global_Tempo, &tempo);
+            }
+            break;
+        }
         case StartButtonAction: {
             SystemState_t state = SystemState_Running;
             GlobalVariables_Write(Global_SystemState, &state);
@@ -176,6 +217,39 @@ static void State_CalibrationError(uint8_t action) {
     }
 }
 
+static void LeftButtonPressed(void *context, const void *data) {
+    IGNORE(context);
+    IGNORE(data);
+
+    uint8_t action = LeftButtonAction;
+    SystemState_t state = 0;
+    GlobalVariables_Read(Global_SystemState, &state);
+
+    switch (state) {
+        case SystemState_Idle: {
+            State_Idle(action);
+            break;
+        }
+        case SystemState_Running: {
+            State_Running(action);
+            break;
+        }
+        case SystemState_Paused: {
+            State_Paused(action);
+            break;
+        }
+        case SystemState_Tempo: {
+            State_Tempo(action);
+            break;
+        }
+        case SystemState_CalibrationError: {
+            State_CalibrationError(action);
+            break;
+        }
+        default:
+            break;
+    }
+}
 static void RightButtonPressed(void *context, const void *data) {
     IGNORE(context);
     IGNORE(data);
@@ -361,6 +435,9 @@ static void ModeChanged(void *context, const void *data) {
 }
 
 void SystemStateManager_Init(void) {
+    const GlobalVariables_Subscription_t leftButtonSubscription = { .context = NULL, .callback = LeftButtonPressed };
+    GlobalVariables_Subscribe(Global_LeftButtonSignal, &leftButtonSubscription);
+
     const GlobalVariables_Subscription_t rightButtonSubscription = { .context = NULL, .callback = RightButtonPressed };
     GlobalVariables_Subscribe(Global_RightButtonSignal, &rightButtonSubscription);
 
@@ -390,5 +467,8 @@ void SystemStateManager_Init(void) {
     // don't need to resolve if initializing handed mode to something not 0, but here just in case it changes
     int8_t distances[DistanceArrayLength] = { 0 };
     GlobalVariables_Read(Global_FingerDistances, distances);
-    ResolveFingerDistances(mode, distances);
+    ResolveFingerDistances();
+
+    uint8_t tempo = DefaultTempo;
+    GlobalVariables_Write(Global_Tempo, &tempo);
 }

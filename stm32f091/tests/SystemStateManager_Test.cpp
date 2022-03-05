@@ -11,7 +11,10 @@ extern "C"
 
 TEST_GROUP(SystemStateManager) {
     enum {
-        DistanceArrayLength = 10
+        DistanceArrayLength = 10,
+        DefaultTempo = 60,
+        MinTempo = 1,
+        MaxTempo = 255,
     };
 
     void setup() {
@@ -26,6 +29,13 @@ TEST_GROUP(SystemStateManager) {
     }
 
     void teardown() {
+    }
+
+    void PressLeftButton() {
+        uint8_t signal = 0;
+        GlobalVariables_Read(Global_LeftButtonSignal, &signal);
+        signal++;
+        GlobalVariables_Write(Global_LeftButtonSignal, &signal);
     }
 
     void PressRightButton() {
@@ -71,6 +81,12 @@ TEST_GROUP(SystemStateManager) {
     void CheckModeIs(uint8_t expected) {
         uint8_t actual;
         GlobalVariables_Read(Global_HandedMode, &actual);
+        CHECK_EQUAL(expected, actual);
+    }
+
+    void CheckTempoIs(uint8_t expected) {
+        uint8_t actual;
+        GlobalVariables_Read(Global_Tempo, &actual);
         CHECK_EQUAL(expected, actual);
     }
 
@@ -242,6 +258,10 @@ TEST(SystemStateManager, ShouldTransitionTempoToIdleWhenTempoPressed) {
     CheckStateIs(SystemState_Idle);
 }
 
+TEST(SystemStateManager, ShouldSetTempoToDefaultOnInit) {
+    CheckTempoIs(DefaultTempo);
+}
+
 TEST(SystemStateManager, ShouldTransitionIdleToRunningWhenStartPressed) {
     PressStartButton();
 
@@ -266,11 +286,29 @@ TEST(SystemStateManager, ShouldTransitionPausedToRunningWhenStartPressed) {
     CheckStateIs(SystemState_Running);
 }
 
+TEST(SystemStateManager, ShouldChangeSongInIdleWhenLeftPressed) {
+    uint8_t index = 1;
+    GlobalVariables_Write(Global_SongIndex, &index);
+    PressLeftButton();
+
+    CheckStateIs(SystemState_Idle);
+    CheckSongIndexIs(0);
+}
+
 TEST(SystemStateManager, ShouldChangeSongInIdleWhenRightPressed) {
     PressRightButton();
 
     CheckStateIs(SystemState_Idle);
     CheckSongIndexIs(1);
+}
+
+TEST(SystemStateManager, ShouldWrapAroundSongIndexInIdleWhenLeftPressed) {
+    uint8_t index = 0;
+    GlobalVariables_Write(Global_SongIndex, &index);
+    PressLeftButton();
+
+    CheckStateIs(SystemState_Idle);
+    CheckSongIndexIs(Song_NumberOfSongs - 1);
 }
 
 TEST(SystemStateManager, ShouldWrapAroundSongIndexInIdleWhenRightPressed) {
@@ -280,6 +318,20 @@ TEST(SystemStateManager, ShouldWrapAroundSongIndexInIdleWhenRightPressed) {
 
     CheckStateIs(SystemState_Idle);
     CheckSongIndexIs(0);
+}
+
+TEST(SystemStateManager, ShouldMoveBackwardOneNoteInRunningWhenLeftPressed) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    uint8_t originalBackwardSignal;
+    GlobalVariables_Read(Global_NoteBackwardSignal, &originalBackwardSignal);
+    PressLeftButton();
+
+    CheckStateIs(SystemState_Running);
+    uint8_t currentBackwardSignal;
+    GlobalVariables_Read(Global_NoteBackwardSignal, &currentBackwardSignal);
+    CHECK(originalBackwardSignal != currentBackwardSignal);
 }
 
 TEST(SystemStateManager, ShouldMoveForwardOneNoteInRunningWhenRightPressed) {
@@ -294,4 +346,43 @@ TEST(SystemStateManager, ShouldMoveForwardOneNoteInRunningWhenRightPressed) {
     uint8_t currentForwardSignal;
     GlobalVariables_Read(Global_NoteForwardSignal, &currentForwardSignal);
     CHECK(originalForwardSignal != currentForwardSignal);
+}
+
+TEST(SystemStateManager, ShouldDecreaseTempoInTempoStateWhenLeftPressed) {
+    SystemState_t state = SystemState_Tempo;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    uint8_t tempo = DefaultTempo;
+    GlobalVariables_Write(Global_Tempo, &tempo);
+    PressLeftButton();
+
+    CheckTempoIs(DefaultTempo - 1);
+}
+
+TEST(SystemStateManager, ShouldIncreaseTempoInTempoStateWhenRightPressed) {
+    SystemState_t state = SystemState_Tempo;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    uint8_t tempo = DefaultTempo;
+    GlobalVariables_Write(Global_Tempo, &tempo);
+    PressRightButton();
+
+    CheckTempoIs(DefaultTempo + 1);
+}
+
+TEST(SystemStateManager, ShouldNotAllowTempoToChangeOutOfBounds) {
+    SystemState_t state = SystemState_Tempo;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    uint8_t tempo = MinTempo;
+    GlobalVariables_Write(Global_Tempo, &tempo);
+    PressLeftButton();
+
+    CheckTempoIs(MinTempo);
+
+    tempo = MaxTempo;
+    GlobalVariables_Write(Global_Tempo, &tempo);
+    PressRightButton();
+
+    CheckTempoIs(MaxTempo);
 }

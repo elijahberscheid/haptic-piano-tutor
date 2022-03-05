@@ -66,6 +66,13 @@ TEST_GROUP(SystemStateManager) {
         GlobalVariables_Write(Global_StartButtonSignal, &signal);
     }
 
+    void PressStopButton() {
+        uint8_t signal = 0;
+        GlobalVariables_Read(Global_StopButtonSignal, &signal);
+        signal++;
+        GlobalVariables_Write(Global_StopButtonSignal, &signal);
+    }
+
     void CheckStateIs(SystemState_t expected) {
         SystemState_t actual;
         GlobalVariables_Read(Global_SystemState, &actual);
@@ -284,6 +291,24 @@ TEST(SystemStateManager, ShouldTransitionPausedToRunningWhenStartPressed) {
     PressStartButton();
 
     CheckStateIs(SystemState_Running);
+}
+
+TEST(SystemStateManager, ShouldTransitionRunningToPausedWhenStopPressed) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    PressStopButton();
+
+    CheckStateIs(SystemState_Idle);
+}
+
+TEST(SystemStateManager, ShouldTransitionPausedToIdleWhenStopPressed) {
+    SystemState_t state = SystemState_Paused;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    PressStopButton();
+
+    CheckStateIs(SystemState_Idle);
 }
 
 TEST(SystemStateManager, ShouldChangeSongInIdleWhenLeftPressed) {

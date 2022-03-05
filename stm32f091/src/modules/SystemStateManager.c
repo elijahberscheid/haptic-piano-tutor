@@ -11,6 +11,7 @@ enum {
     ModeButtonAction,
     TempoButtonAction,
     StartButtonAction,
+    StopButtonAction,
     CalibrationErrorAction,
     DistanceArrayLength = 10,
     DefaultTempo = 60,
@@ -130,6 +131,11 @@ static void State_Running(uint8_t action) {
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
+        case StopButtonAction: {
+            SystemState_t state = SystemState_Idle;
+            GlobalVariables_Write(Global_SystemState, &state);
+            break;
+        }
         case CalibrationErrorAction: {
             SystemState_t state = SystemState_CalibrationError;
             GlobalVariables_Write(Global_SystemState, &state);
@@ -149,6 +155,11 @@ static void State_Paused(uint8_t action) {
         }
         case ModeButtonAction: {
             IncrementHandedMode();
+            break;
+        }
+        case StopButtonAction: {
+            SystemState_t state = SystemState_Idle;
+            GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
         case CalibrationErrorAction: {
@@ -179,11 +190,6 @@ static void State_Tempo(uint8_t action) {
                 tempo++;
                 GlobalVariables_Write(Global_Tempo, &tempo);
             }
-            break;
-        }
-        case StartButtonAction: {
-            SystemState_t state = SystemState_Running;
-            GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
         case ModeButtonAction: {
@@ -386,6 +392,40 @@ static void StartButtonPressed(void *context, const void *data) {
     }
 }
 
+static void StopButtonPressed(void *context, const void *data) {
+    IGNORE(context);
+    IGNORE(data);
+
+    uint8_t action = StopButtonAction;
+    SystemState_t state = 0;
+    GlobalVariables_Read(Global_SystemState, &state);
+
+    switch (state) {
+        case SystemState_Idle: {
+            State_Idle(action);
+            break;
+        }
+        case SystemState_Running: {
+            State_Running(action);
+            break;
+        }
+        case SystemState_Paused: {
+            State_Paused(action);
+            break;
+        }
+        case SystemState_Tempo: {
+            State_Tempo(action);
+            break;
+        }
+        case SystemState_CalibrationError: {
+            State_CalibrationError(action);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 static void CalibrationErrorChanged(void *context, const void *data) {
     IGNORE(context);
     IGNORE(data);
@@ -449,6 +489,9 @@ void SystemStateManager_Init(void) {
 
     const GlobalVariables_Subscription_t startButtonSubscription = { .context = NULL, .callback = StartButtonPressed };
     GlobalVariables_Subscribe(Global_StartButtonSignal, &startButtonSubscription);
+
+    const GlobalVariables_Subscription_t stopButtonSubscription = { .context = NULL, .callback = StopButtonPressed };
+    GlobalVariables_Subscribe(Global_StopButtonSignal, &stopButtonSubscription);
 
     const GlobalVariables_Subscription_t calibrationErrorSubscription = { .context = NULL, .callback = CalibrationErrorChanged };
     GlobalVariables_Subscribe(Global_CalibrationError, &calibrationErrorSubscription);

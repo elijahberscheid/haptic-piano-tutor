@@ -13,7 +13,8 @@
     ENTRY(CalibrationError,         bool,       0) \
     ENTRY(HandedMode,               uint8_t,    0) \
     ENTRY(Tempo,                    uint8_t,    0) \
-    ENTRY(DebugButtonSignal,        uint8_t,    0) \
+    ENTRY(DebugButton0Signal,       uint8_t,    0) \
+    ENTRY(DebugButton1Signal,       uint8_t,    0) \
     ENTRY(LeftButtonSignal,         uint8_t,    0) \
     ENTRY(RightButtonSignal,        uint8_t,    0) \
     ENTRY(ModeButtonSignal,         uint8_t,    0) \

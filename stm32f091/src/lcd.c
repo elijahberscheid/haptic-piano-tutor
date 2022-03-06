@@ -282,25 +282,7 @@ void LCD_Init()
     nano_wait(120000000); // Wait 120 ms
     LCD_WR_REG(0x29);     // Display on
 
-    LCD_direction(USE_HORIZONTAL);
-}
-
-//===========================================================================
-// Set the entire display to one color
-//===========================================================================
-void LCD_Clear(u16 Color)
-{
-    unsigned int i,m;
-    LCD_SetWindow(0,0,lcddev.width-1,lcddev.height-1);
-    LCD_WriteData16_Prepare();
-    for(i=0;i<lcddev.height;i++)
-    {
-        for(m=0;m<lcddev.width;m++)
-        {
-            LCD_WriteData16(Color);
-        }
-    }
-    LCD_WriteData16_End();
+    LCD_direction(1); // rotate 90 degress, see lcd.h
 }
 
 //===========================================================================
@@ -322,6 +304,24 @@ void LCD_SetWindow(uint16_t xStart, uint16_t yStart, uint16_t xEnd, uint16_t yEn
     LCD_WR_DATA(0x00FF&yEnd);
 
     LCD_WriteRAM_Prepare();
+}
+
+//===========================================================================
+// Set the entire display to one color
+//===========================================================================
+void LCD_Clear(u16 Color)
+{
+    unsigned int i,m;
+    LCD_SetWindow(0,0,lcddev.width-1,lcddev.height-1);
+    LCD_WriteData16_Prepare();
+    for(i=0;i<lcddev.height;i++)
+    {
+        for(m=0;m<lcddev.width;m++)
+        {
+            LCD_WriteData16(Color);
+        }
+    }
+    LCD_WriteData16_End();
 }
 
 //===========================================================================

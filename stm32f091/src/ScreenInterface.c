@@ -1,5 +1,6 @@
 #include "stm32f0xx.h"
 #include <stdio.h>
+#include <string.h>
 #include "ScreenInterface.h"
 #include "lcd.h"
 #include "modules/Note.h"
@@ -9,7 +10,14 @@
 #define IGNORE(x) ((void)x)
 
 enum {
-    DistanceArrayLength = 10
+    DistanceArrayLength = 10,
+    CharacterWidth = 8, // an approximate value, only used to space out text from each other
+    CharacterHeight = 16,
+    DefaultX = 40,
+    CurrentSongY = 40,
+    SongNameY = CurrentSongY + CharacterHeight,
+    ExpectedNotesY = SongNameY + 2 * CharacterHeight,
+    ExpectedNoteNamesY = ExpectedNotesY + CharacterHeight
 };
 
 static const char *keyToStringTable[] = {
@@ -106,13 +114,13 @@ static const char *keyToStringTable[] = {
 };
 
 static void UpdateExpectedNotes(uint8_t *notes) {
-    LCD_Clear(BLACK);
-    LCD_DrawString(40, 60,  WHITE, BLACK, "Expected Notes:", 16, 0);
-    uint16_t xpos = 40;
+    LCD_DrawFillRectangle(0, ExpectedNotesY, lcddev.width -1, ExpectedNotesY + CharacterHeight, WHITE);
+    LCD_DrawString(DefaultX, ExpectedNotesY, BLACK, WHITE, "Expected Notes:", 16, 0);
+    uint16_t xpos = DefaultX;
     for (uint8_t i = 0; i < DistanceArrayLength; i++) {
         if (notes[i] < Key_Invalid) {
-            LCD_DrawString(xpos, 80,  WHITE, BLACK, keyToStringTable[notes[i]], 16, 0);
-            xpos += 40;
+            LCD_DrawString(xpos, ExpectedNoteNamesY, BLACK, WHITE, keyToStringTable[notes[i]], 16, 0);
+            xpos += strlen(keyToStringTable[notes[i]]) * CharacterWidth;
         }
     }
 }
@@ -120,9 +128,11 @@ static void UpdateExpectedNotes(uint8_t *notes) {
 static void UpdateSongName(uint8_t songIndex) {
     char *songName = (songIndex == 0) ? "Mary Had a Little Lamb" : "C Major Scale";
 
-    LCD_Clear(BLACK);
-    LCD_DrawString(40, 60,  WHITE, BLACK, "Current Song:", 16, 0);
-    LCD_DrawString(40, 80,  WHITE, BLACK, songName, 16, 0);
+    LCD_DrawFillRectangle(0, CurrentSongY, lcddev.width -1, CurrentSongY + CharacterHeight, WHITE);
+    LCD_DrawString(DefaultX, CurrentSongY, BLACK, WHITE, "Current Song:", CharacterHeight, 0);
+
+    LCD_DrawFillRectangle(0, SongNameY, lcddev.width -1, SongNameY + CharacterHeight, WHITE);
+    LCD_DrawString(DefaultX, SongNameY, BLACK, WHITE, songName, CharacterHeight, 0);
 }
 
 static void SystemStateChanged(void *context, const void *data) {
@@ -238,7 +248,7 @@ void ScreenInterface_Init(void) {
 
     PowerLCD(0);
     LCD_Init();
-    LCD_Clear(BLACK);
+    LCD_Clear(WHITE);
     PowerLCD(1);
 
     const GlobalVariables_Subscription_t stateSubscription = { .context = NULL, .callback = SystemStateChanged };

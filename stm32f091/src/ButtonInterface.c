@@ -9,14 +9,14 @@
 #define PUPDR_PULLUP (0x1)
 #define PUPDR_PULLDOWN (0x2)
 
-volatile static bool debugButton0Pressed;
-volatile static bool debugButton1Pressed;
-volatile static bool leftButtonPressed;
-volatile static bool rightButtonPressed;
-volatile static bool modeButtonPressed;
-volatile static bool tempoButtonPressed;
-volatile static bool startButtonPressed;
-volatile static bool stopButtonPressed;
+volatile static bool debugButton0Pressed = false;
+volatile static bool debugButton1Pressed = false;
+volatile static bool leftButtonPressed = false;
+volatile static bool rightButtonPressed = false;
+volatile static bool modeButtonPressed = false;
+volatile static bool tempoButtonPressed = false;
+volatile static bool startButtonPressed = false;
+volatile static bool stopButtonPressed = false;
 
 enum {
     // if any of these pin numbers change, double check that it still uses the correct ISR
@@ -50,12 +50,12 @@ static void IncrementSignal(uint8_t id) {
 
 void EXTI0_1_IRQHandler(void) {
     EXTI->PR = 1 << DebugButton0Pin;
-    debugButton0Pressed = 1;
+    debugButton0Pressed = true;
 }
 
 void EXTI2_3_IRQHandler(void) {
     EXTI->PR = 1 << DebugButton1Pin;
-    debugButton1Pressed = 1;
+    debugButton1Pressed = true;
 }
 
 void EXTI4_15_IRQHandler(void) {
@@ -65,42 +65,42 @@ void EXTI4_15_IRQHandler(void) {
     if (EXTI->PR & (1 << LeftButtonPin)) {
         EXTI->PR = 1 << LeftButtonPin; // acknowledge interrupt
         if (GPIOC->IDR & (1 << LeftButtonPin)) {
-           leftButtonPressed = 1;
+           leftButtonPressed = true;
         }
     }
 
     if (EXTI->PR & (1 << RightButtonPin)) {
         EXTI->PR = 1 << RightButtonPin; // acknowledge interrupt
         if (GPIOC->IDR & (1 << RightButtonPin)) {
-            rightButtonPressed = 1;
+            rightButtonPressed = true;
         }
     }
 
     if (EXTI->PR & (1 << ModeButtonPin)) {
         EXTI->PR = 1 << ModeButtonPin; // acknowledge interrupt
         if (GPIOC->IDR & (1 << ModeButtonPin)) {
-            modeButtonPressed = 1;
+            modeButtonPressed = true;
         }
     }
 
     if (EXTI->PR & (1 << TempoButtonPin)) {
         EXTI->PR = 1 << TempoButtonPin; // acknowledge interrupt
         if (GPIOC->IDR & (1 << TempoButtonPin)) {
-            tempoButtonPressed = 1;
+            tempoButtonPressed = true;
         }
     }
 
     if (EXTI->PR & (1 << StartButtonPin)) {
         EXTI->PR = 1 << StartButtonPin; // acknowledge interrupt
         if (GPIOC->IDR & (1 << StartButtonPin)) {
-            startButtonPressed = 1;
+            startButtonPressed = true;
         }
     }
 
     if (EXTI->PR & (1 << StopButtonPin)) {
         EXTI->PR = 1 << StopButtonPin; // acknowledge interrupt
         if (GPIOC->IDR & (1 << StopButtonPin)) {
-            stopButtonPressed = 1;
+            stopButtonPressed = true;
         }
     }
 }
@@ -108,42 +108,42 @@ void EXTI4_15_IRQHandler(void) {
 void ButtonInterface_Run(void) {
     if (debugButton0Pressed) {
         IncrementSignal(Global_DebugButton0Signal);
-        debugButton0Pressed = 0;
+        debugButton0Pressed = false;
     }
 
     if (debugButton1Pressed) {
         IncrementSignal(Global_DebugButton1Signal);
-        debugButton1Pressed = 0;
+        debugButton1Pressed = false;
     }
 
     if (leftButtonPressed) {
         IncrementSignal(Global_LeftButtonSignal);
-        leftButtonPressed = 0;
+        leftButtonPressed = false;
     }
 
     if (rightButtonPressed) {
         IncrementSignal(Global_RightButtonSignal);
-        rightButtonPressed = 0;
+        rightButtonPressed = false;
     }
 
     if (modeButtonPressed) {
         IncrementSignal(Global_ModeButtonSignal);
-        modeButtonPressed = 0;
+        modeButtonPressed = false;
     }
 
     if (tempoButtonPressed) {
         IncrementSignal(Global_TempoButtonSignal);
-        tempoButtonPressed = 0;
+        tempoButtonPressed = false;
     }
 
     if (startButtonPressed) {
         IncrementSignal(Global_StartButtonSignal);
-        startButtonPressed = 0;
+        startButtonPressed = false;
     }
 
     if (stopButtonPressed) {
         IncrementSignal(Global_StopButtonSignal);
-        stopButtonPressed = 0;
+        stopButtonPressed = false;
     }
 }
 

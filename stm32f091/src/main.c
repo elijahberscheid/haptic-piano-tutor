@@ -19,8 +19,8 @@ int main(void) {
     GlobalVariables_Init();
     MusicManager_Init(&musicManager, &config);
     ButtonInterface_Init();
-    ScreenInterface_Init();
     SystemStateManager_Init();
+    ScreenInterface_Init();
 
     int i = 0;
     for(;;) {

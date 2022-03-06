@@ -17,7 +17,9 @@ enum {
     CurrentSongY = 40,
     SongNameY = CurrentSongY + CharacterHeight,
     ExpectedNotesY = SongNameY + 2 * CharacterHeight,
-    ExpectedNoteNamesY = ExpectedNotesY + CharacterHeight
+    ExpectedNoteNamesY = ExpectedNotesY + CharacterHeight,
+    ModeY = ExpectedNoteNamesY + 2 * CharacterHeight,
+    TempoY = ModeY + CharacterHeight
 };
 
 static const char *keyToStringTable[] = {
@@ -113,17 +115,11 @@ static const char *keyToStringTable[] = {
     "Rest"
 };
 
-static void UpdateExpectedNotes(uint8_t *notes) {
-    LCD_DrawFillRectangle(0, ExpectedNotesY, lcddev.width -1, ExpectedNotesY + CharacterHeight, WHITE);
-    LCD_DrawString(DefaultX, ExpectedNotesY, BLACK, WHITE, "Expected Notes:", 16, 0);
-    uint16_t xpos = DefaultX;
-    for (uint8_t i = 0; i < DistanceArrayLength; i++) {
-        if (notes[i] < Key_Invalid) {
-            LCD_DrawString(xpos, ExpectedNoteNamesY, BLACK, WHITE, keyToStringTable[notes[i]], 16, 0);
-            xpos += strlen(keyToStringTable[notes[i]]) * CharacterWidth;
-        }
-    }
-}
+static const char *modeStringTable[] = {
+    "Left Hand",
+    "Right Hand",
+    "Both Hands"
+};
 
 static void UpdateSongName(uint8_t songIndex) {
     char *songName = (songIndex == 0) ? "Mary Had a Little Lamb" : "C Major Scale";
@@ -135,6 +131,32 @@ static void UpdateSongName(uint8_t songIndex) {
     LCD_DrawString(DefaultX, SongNameY, BLACK, WHITE, songName, CharacterHeight, 0);
 }
 
+static void UpdateExpectedNotes(uint8_t *notes, uint16_t color) {
+    LCD_DrawFillRectangle(0, ExpectedNotesY, lcddev.width -1, ExpectedNotesY + CharacterHeight, WHITE);
+    LCD_DrawString(DefaultX, ExpectedNotesY, color, WHITE, "Expected Notes:", 16, 0);
+    uint16_t xpos = DefaultX;
+    for (uint8_t i = 0; i < DistanceArrayLength; i++) {
+        if (notes[i] < Key_Invalid) {
+            LCD_DrawString(xpos, ExpectedNoteNamesY, color, WHITE, keyToStringTable[notes[i]], 16, 0);
+            xpos += (strlen(keyToStringTable[notes[i]]) + 1) * CharacterWidth;
+        }
+    }
+}
+
+static void UpdateHandedMode(uint8_t mode, uint16_t color) {
+    LCD_DrawFillRectangle(0, ModeY, lcddev.width -1, ModeY + CharacterHeight, WHITE);
+    LCD_DrawString(DefaultX, ModeY, color, WHITE, "Mode: ", CharacterHeight, 0);
+    LCD_DrawString(DefaultX + strlen("Mode: ") * CharacterWidth, ModeY, color, WHITE, modeStringTable[mode], CharacterHeight, 0);
+}
+
+static void UpdateTempo(uint8_t tempo, uint16_t color) {
+    LCD_DrawFillRectangle(0, TempoY, lcddev.width -1, TempoY + CharacterHeight, WHITE);
+    LCD_DrawString(DefaultX, TempoY, color, WHITE, "Tempo (bpm): ", CharacterHeight, 0);
+    char tempoBuffer[4] = { 0 }; // assumes tempo will never have more than 3 digits, plus 1 digit for null terminator
+    sprintf(tempoBuffer, "%d", tempo);
+    LCD_DrawString(DefaultX + strlen("Tempo (bpm): ") * CharacterWidth, TempoY, color, WHITE, tempoBuffer, CharacterHeight, 0);
+}
+
 static void SystemStateChanged(void *context, const void *data) {
     IGNORE(context);
     SystemState_t *state = (SystemState_t *) data;
@@ -144,12 +166,36 @@ static void SystemStateChanged(void *context, const void *data) {
             uint8_t songIndex = 0;
             GlobalVariables_Read(Global_SongIndex, &songIndex);
             UpdateSongName(songIndex);
+
+            uint8_t notes[DistanceArrayLength] = { 0 };
+            GlobalVariables_Read(Global_DesiredFingerPositions, &notes);
+            UpdateExpectedNotes(notes, BLACK);
+
+            uint8_t mode = 0;
+            GlobalVariables_Read(Global_HandedMode, &mode);
+            UpdateHandedMode(mode, BLACK);
+
+            uint8_t tempo = 0;
+            GlobalVariables_Read(Global_Tempo, &tempo);
+            UpdateTempo(tempo, BLACK);
             break;
         }
         case SystemState_Running: {
             uint8_t notes[DistanceArrayLength] = { 0 };
             GlobalVariables_Read(Global_DesiredFingerPositions, &notes);
-            UpdateExpectedNotes(notes);
+            UpdateExpectedNotes(notes, BLUE);
+            break;
+        }
+        case SystemState_Paused: {
+            uint8_t notes[DistanceArrayLength] = { 0 };
+            GlobalVariables_Read(Global_DesiredFingerPositions, &notes);
+            UpdateExpectedNotes(notes, RED);
+            break;
+        }
+        case SystemState_Tempo: {
+            uint8_t tempo = 0;
+            GlobalVariables_Read(Global_Tempo, &tempo);
+            UpdateTempo(tempo, BLUE);
             break;
         }
         default:
@@ -169,7 +215,7 @@ static void DesiredPositionsChanged(void *context, const void *data) {
             break;
         }
         case SystemState_Running: {
-            UpdateExpectedNotes(expected);
+            UpdateExpectedNotes(expected, BLUE);
             break;
         }
         default:
@@ -181,20 +227,21 @@ static void SongIndexChanged(void *context, const void *data) {
     IGNORE(context);
     uint8_t *songIndex = (uint8_t *) data;
 
-    SystemState_t state = 0;
-    GlobalVariables_Read(Global_SystemState, &state);
+    UpdateSongName(*songIndex);
+}
 
-    switch (state) {
-        case SystemState_Idle: {
-            UpdateSongName(*songIndex);
-            break;
-        }
-        case SystemState_Running: {
-            break;
-        }
-        default:
-            break;
-    }
+static void TempoChanged(void *context, const void *data) {
+    IGNORE(context);
+    uint8_t *tempo = (uint8_t *) data;
+
+    UpdateTempo(*tempo, BLUE);
+}
+
+static void HandedModeChanged(void *context, const void *data) {
+    IGNORE(context);
+    uint8_t *mode = (uint8_t *) data;
+
+    UpdateHandedMode(*mode, BLACK);
 }
 
 static void SPI1_Init(void) {
@@ -259,6 +306,12 @@ void ScreenInterface_Init(void) {
 
     const GlobalVariables_Subscription_t songIndexSubscription = { .context = NULL, .callback = SongIndexChanged };
     GlobalVariables_Subscribe(Global_SongIndex, &songIndexSubscription);
+
+    const GlobalVariables_Subscription_t tempoSubscription = { .context = NULL, .callback = TempoChanged };
+    GlobalVariables_Subscribe(Global_Tempo, &tempoSubscription);
+
+    const GlobalVariables_Subscription_t modeSubscription = { .context = NULL, .callback = HandedModeChanged };
+    GlobalVariables_Subscribe(Global_HandedMode, &modeSubscription);
 
     SystemState_t state = 0;
     GlobalVariables_Read(Global_SystemState, &state);

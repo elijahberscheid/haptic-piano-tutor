@@ -1,0 +1,3 @@
+[submodule "stm32f091/src/haptic-piano-tutor-library"]
+	path = stm32f091/src/haptic-piano-tutor-library
+	url = git@github.com:Carrie02/haptic-piano-tutor-library.git

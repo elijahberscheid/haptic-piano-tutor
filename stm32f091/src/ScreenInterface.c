@@ -14,6 +14,9 @@ enum {
     CharacterWidth = 8, // an approximate value, only used to space out text from each other
     CharacterHeight = 16,
     DefaultX = 40,
+    StateX = 220,
+    CalibrationErrorStateX = 180,
+    StateY = 20,
     CurrentSongY = 40,
     SongNameY = CurrentSongY + CharacterHeight,
     ExpectedNotesY = SongNameY + 2 * CharacterHeight,
@@ -115,20 +118,38 @@ static const char *keyToStringTable[] = {
     "Rest"
 };
 
+static const char *stateStringTable[] = {
+    "Idle", // not used
+    "Running",
+    "Paused",
+    "Tempo",
+    "Calibration Error"
+};
+
+// TODO: does not make sense to store song names here, store them with the songs instead
+static const char *songNameStringTable[] = {
+    "Mary Had A Little Lamb",
+    "C Major Scale"
+};
+
 static const char *modeStringTable[] = {
     "Left Hand",
     "Right Hand",
     "Both Hands"
 };
 
-static void UpdateSongName(uint8_t songIndex) {
-    char *songName = (songIndex == 0) ? "Mary Had a Little Lamb" : "C Major Scale";
+static void UpdateState(SystemState_t state, uint16_t color) {
+    LCD_DrawFillRectangle(0, StateY, lcddev.width -1, StateY + CharacterHeight, WHITE);
+    LCD_DrawString((state == SystemState_CalibrationError)? CalibrationErrorStateX : StateX,
+            StateY, color, WHITE, stateStringTable[state], CharacterHeight, 0);
+}
 
+static void UpdateSongName(uint8_t songIndex) {
     LCD_DrawFillRectangle(0, CurrentSongY, lcddev.width -1, CurrentSongY + CharacterHeight, WHITE);
     LCD_DrawString(DefaultX, CurrentSongY, BLACK, WHITE, "Current Song:", CharacterHeight, 0);
 
     LCD_DrawFillRectangle(0, SongNameY, lcddev.width -1, SongNameY + CharacterHeight, WHITE);
-    LCD_DrawString(DefaultX, SongNameY, BLACK, WHITE, songName, CharacterHeight, 0);
+    LCD_DrawString(DefaultX, SongNameY, BLACK, WHITE, songNameStringTable[songIndex], CharacterHeight, 0);
 }
 
 static void UpdateExpectedNotes(uint8_t *notes, uint16_t color) {
@@ -163,13 +184,15 @@ static void SystemStateChanged(void *context, const void *data) {
 
     switch (*state) {
         case SystemState_Idle: {
+            UpdateState(*state, WHITE);
+
             uint8_t songIndex = 0;
             GlobalVariables_Read(Global_SongIndex, &songIndex);
             UpdateSongName(songIndex);
 
             uint8_t notes[DistanceArrayLength] = { 0 };
             GlobalVariables_Read(Global_DesiredFingerPositions, &notes);
-            UpdateExpectedNotes(notes, BLACK);
+            UpdateExpectedNotes(notes, WHITE);
 
             uint8_t mode = 0;
             GlobalVariables_Read(Global_HandedMode, &mode);
@@ -181,21 +204,31 @@ static void SystemStateChanged(void *context, const void *data) {
             break;
         }
         case SystemState_Running: {
+            UpdateState(*state, BLACK);
+
             uint8_t notes[DistanceArrayLength] = { 0 };
             GlobalVariables_Read(Global_DesiredFingerPositions, &notes);
             UpdateExpectedNotes(notes, BLUE);
             break;
         }
         case SystemState_Paused: {
+            UpdateState(*state, BLACK);
+
             uint8_t notes[DistanceArrayLength] = { 0 };
             GlobalVariables_Read(Global_DesiredFingerPositions, &notes);
             UpdateExpectedNotes(notes, RED);
             break;
         }
         case SystemState_Tempo: {
+            UpdateState(*state, BLACK);
+
             uint8_t tempo = 0;
             GlobalVariables_Read(Global_Tempo, &tempo);
             UpdateTempo(tempo, BLUE);
+            break;
+        }
+        case SystemState_CalibrationError: {
+            UpdateState(*state, RED);
             break;
         }
         default:
@@ -211,15 +244,18 @@ static void DesiredPositionsChanged(void *context, const void *data) {
     GlobalVariables_Read(Global_SystemState, &state);
 
     switch (state) {
-        case SystemState_Idle: {
-            break;
-        }
         case SystemState_Running: {
             UpdateExpectedNotes(expected, BLUE);
             break;
         }
-        default:
+        case SystemState_Paused: {
+            UpdateExpectedNotes(expected, RED);
             break;
+        }
+        default: {
+            UpdateExpectedNotes(expected, WHITE);
+            break;
+        }
     }
 }
 

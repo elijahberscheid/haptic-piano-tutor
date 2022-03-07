@@ -84,6 +84,20 @@ TEST_GROUP(MusicManager) {
         GlobalVariables_Write(Global_SoundDetectedSignal, &signal);
     }
 
+    void ChangeNoteForwardSignal() {
+        uint8_t signal = 0;
+        GlobalVariables_Read(Global_NoteForwardSignal, &signal);
+        signal++;
+        GlobalVariables_Write(Global_NoteForwardSignal, &signal);
+    }
+
+    void ChangeNoteBackwardSignal() {
+        uint8_t signal = 0;
+        GlobalVariables_Read(Global_NoteBackwardSignal, &signal);
+        signal++;
+        GlobalVariables_Write(Global_NoteBackwardSignal, &signal);
+    }
+
     void CheckDesiredFingerPositions(uint8_t *expected, uint8_t *actual) {
         for (uint8_t i = 0; i < GlobalVariables_GetLength(Global_DesiredFingerPositions); i++) {
             CHECK_EQUAL(expected[i], actual[i]);
@@ -167,7 +181,7 @@ TEST(MusicManager, ShouldRequestConcurrentNotes) {
     CheckDesiredFingerPositions(expected, actual);
 }
 
-TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannel) { // for music with syncopation
+TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnSoundDetected) { // for music with syncopation
     uint8_t index = 3;
     GlobalVariables_Write(Global_SongIndex, &index);
 
@@ -192,6 +206,63 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannel) { // for music with s
 
     expected[Finger_Left1] = Key_Rest;
     expected[Finger_Right5] = Key_F5;
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+}
+
+// same as previous test case, except uses note forward signal instead of sound detected
+TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnNoteForward) { // for music with syncopation
+    uint8_t index = 3;
+    GlobalVariables_Write(Global_SongIndex, &index);
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    expected[Finger_Left1] = Key_C3;
+    expected[Finger_Right5] = Key_D5;
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+
+    ChangeNoteForwardSignal();
+
+    expected[Finger_Left1] = Key_C4;
+    expected[Finger_Right5] = Key_Rest;
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+
+    ChangeNoteForwardSignal();
+
+    expected[Finger_Left1] = Key_Rest;
+    expected[Finger_Right5] = Key_F5;
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+}
+
+TEST(MusicManager, ShouldGoBackToClosestNoteInAnyChannelOnNoteBackward) { // for music with syncopation
+    uint8_t index = 3;
+    GlobalVariables_Write(Global_SongIndex, &index);
+    ChangeNoteForwardSignal();
+    ChangeNoteForwardSignal();
+
+    ChangeNoteBackwardSignal();
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    expected[Finger_Left1] = Key_C4;
+    expected[Finger_Right5] = Key_Rest;
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+
+    CheckDesiredFingerPositions(expected, actual);
+
+    ChangeNoteBackwardSignal();
+
+    expected[Finger_Left1] = Key_C3;
+    expected[Finger_Right5] = Key_D5;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
 }
@@ -231,4 +302,4 @@ TEST(MusicManager, ShouldRequestRestWhenEndOfSongIsReached) {
     CheckDesiredFingerPositions(expected, actual);
 }
 
-// Should??IfMultipleNotesAreMappedToSameFinger, probably just take the top most one
+// TODO: Should??IfMultipleNotesAreMappedToSameFinger, probably just take the top most one

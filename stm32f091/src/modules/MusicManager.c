@@ -36,6 +36,34 @@ static uint32_t FindNextTicks(MusicManager_t *instance, const Note_t *channel) {
     return nextTicks;
 }
 
+static uint32_t FindPreviousTicks(MusicManager_t *instance, const Note_t *channel) {
+    uint32_t previousTicks = 0;
+    uint32_t noteIndex = 0;
+
+    if (channel == NULL) {
+        previousTicks = 0;
+    }
+    else {
+        for (noteIndex = 0; channel[noteIndex].key != Key_Invalid; noteIndex++) {
+            if (previousTicks < instance->ticks) {
+                previousTicks += channel[noteIndex].length;
+            }
+            else {
+                break;
+            }
+        }
+        if (noteIndex > 0) { // correct for overshooting by one note
+            noteIndex--;
+            previousTicks -= channel[noteIndex].length;
+        }
+        else { // already at the first note in the channel
+            previousTicks = 0;
+        }
+    }
+
+    return previousTicks;
+}
+
 // Returns NoteIndexNotFound if there is no note at the exactly the current number of ticks
 static uint32_t FindCurrentNoteIndex(MusicManager_t *instance, const Note_t *channel) {
     uint32_t nextTicks = 0;
@@ -108,6 +136,30 @@ static void SoundDetected(void *context, const void *data) {
     UpdateDesiredFingerPositions(instance);
 }
 
+static void NoteBackwardChanged(void *context, const void *data) {
+    MusicManager_t *instance = (MusicManager_t *) context;
+    IGNORE(data);
+
+    uint8_t index = 0;
+    GlobalVariables_Read(Global_SongIndex, &index);
+    const Song_t *song = &instance->config->songs[index];
+
+    uint32_t possiblePreviousTicks[Song_MaxConcurrentNotes] = { 0 };
+    for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
+        possiblePreviousTicks[channelIndex] = FindPreviousTicks(instance, song->channels[channelIndex]);
+    }
+
+    uint32_t maxPossiblePreviousTick = 0;
+    for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
+        if (possiblePreviousTicks[channelIndex] > maxPossiblePreviousTick) {
+            maxPossiblePreviousTick = possiblePreviousTicks[channelIndex];
+        }
+    }
+    instance->ticks = maxPossiblePreviousTick;
+
+    UpdateDesiredFingerPositions(instance);
+}
+
 static void SongIndexChanged(void *context, const void *data) {
     MusicManager_t *instance = (MusicManager_t *) context;
     IGNORE(data);
@@ -124,6 +176,10 @@ void MusicManager_Init(MusicManager_t *instance, const MusicManagerConfig_t *con
 
     const GlobalVariables_Subscription_t soundDetectedSubscription = { .context = instance, .callback = SoundDetected };
     GlobalVariables_Subscribe(Global_SoundDetectedSignal, &soundDetectedSubscription);
+    // note forward does the exact same thing as sound detected
+    GlobalVariables_Subscribe(Global_NoteForwardSignal, &soundDetectedSubscription);
+    const GlobalVariables_Subscription_t noteBackwardSubscription = { .context = instance, .callback = NoteBackwardChanged };
+    GlobalVariables_Subscribe(Global_NoteBackwardSignal, &noteBackwardSubscription);
     const GlobalVariables_Subscription_t songIndexSubscription = { .context = instance, .callback = SongIndexChanged };
     GlobalVariables_Subscribe(Global_SongIndex, &songIndexSubscription);
 }

@@ -10,8 +10,10 @@ LinkerScript.ld
 .project
 .settings/
 *.cfg
-*.swp
+.vim/
 
+# other useful ignores from https://github.com/github/gitignore/blob/master/C.gitignore
+#
 # Prerequisites
 *.d
 

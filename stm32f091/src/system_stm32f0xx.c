@@ -340,7 +340,12 @@ static void SetSysClock(void)
   else
   { /* If HSE fails to start-up, the application will have wrong clock 
          configuration. User can add here some code to deal with this error */
-  }  
+      FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY;
+      RCC->CR2 |= RCC_CR2_HSI48ON;  // enable HSI48
+      while(!(RCC->CR2 & RCC_CR2_HSI48RDY));  // wait for HSI48 to be ready
+      RCC->CFGR |= RCC_CFGR_SW_HSI48;  // set SYSCLK to HSI48
+      while(!(RCC->CFGR & RCC_CFGR_SWS_HSI48));  // wait for SYSCLK to be set to HSI48
+  }
 }
 
 /**

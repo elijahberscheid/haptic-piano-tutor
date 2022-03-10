@@ -2,9 +2,8 @@
  *  Welcome to the greatest shift-register haptic motor driver module you've
  *  ever seen! Read on for instructions.
  *
- *  To get everything setup, run these:
+ *  To get everything setup, run this:
  *      initializeHapticState();
- *      setupTimer3();
  *
  *  You can enable/disable the left-hand and right-hand hardware using two
  *  booleans `leftEn` and `rightEn` as in:
@@ -27,6 +26,9 @@
 #include <stdbool.h>
 #include <stdint.h> // for uint8_t
 #include "motors.h"
+#include "modules/GlobalVariables.h"
+
+#define NUMBER_OF_FINGERS 10
 
 static hapticState_t fingerHapticStates[NUMBER_OF_FINGERS];
 static hapticState_t wristHapticState[2];
@@ -42,51 +44,7 @@ static void nano_wait(unsigned int n) {
 }
 
 
-void initializeHapticState() {
-    for (int i = 0; i < NUMBER_OF_FINGERS; ++i) {
-      distanceVector[i] = 88;
-    }
-
-    // This will use Port A, pins 1-8. Don't use PA0 since it's connected to something else on dev board
-    RCC->AHBENR |= RCC_AHBENR_GPIOAEN; // use Port A
-
-    // PA1: SDI  RightHand
-    // PA2: CLK  RightHand
-    // PA3: LE   RightHand
-    // PA4: OE   RightHand
-    // PA5: SDI  LeftHand
-    // PA6: CLK  LeftHand
-    // PA7: LE   LeftHand
-    // PA8: OE   LeftHand
-
-    GPIOA->MODER &= ~(GPIO_MODER_MODER1 | GPIO_MODER_MODER2 | GPIO_MODER_MODER3
-            | GPIO_MODER_MODER4 | GPIO_MODER_MODER5 | GPIO_MODER_MODER6
-            | GPIO_MODER_MODER7 | GPIO_MODER_MODER8);
-    GPIOA->MODER |= GPIO_MODER_MODER1_0 | GPIO_MODER_MODER2_0
-            | GPIO_MODER_MODER3_0 | GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0
-            | GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0 | GPIO_MODER_MODER8_0;
-    GPIOA->BSRR = GPIO_BSRR_BR_1 | GPIO_BSRR_BR_2 | GPIO_BSRR_BR_3
-            | GPIO_BSRR_BR_4 | GPIO_BSRR_BR_5 | GPIO_BSRR_BR_6 | GPIO_BSRR_BR_7
-            | GPIO_BSRR_BR_8;
-
-    for (int i = 0; i < NUMBER_OF_FINGERS; ++i) {
-        fingerHapticStates[i].dutyCycle = 0;
-        fingerHapticStates[i].period = 20;
-        fingerHapticStates[i].leftActive = 0;
-        fingerHapticStates[i].rightActive = 0;
-        fingerHapticStates[i].subcycleCount = 0;
-    }
-    for (int i = 0; i < 2; ++i) {
-        wristHapticState[i].dutyCycle = 0;
-        wristHapticState[i].period = 20;
-        wristHapticState[i].leftActive = 1;
-        wristHapticState[i].rightActive = 1;
-        wristHapticState[i].subcycleCount = 0;
-    }
-}
-
-
-void pushBitsToHands(uint8_t bitLH, uint8_t bitRH) {
+static void pushBitsToHands(uint8_t bitLH, uint8_t bitRH) {
     GPIOA->BSRR = ((bitRH & 1) << 1) | GPIO_BSRR_BR_1 | ((bitLH & 1) << 5) | GPIO_BSRR_BR_5; // write to PA1 and PA5
     GPIOA->BRR = GPIO_BRR_BR_2 | GPIO_BRR_BR_6; // falling clock PA2 and PA6
     nano_wait(20); // hold time is 5ns
@@ -94,7 +52,7 @@ void pushBitsToHands(uint8_t bitLH, uint8_t bitRH) {
     nano_wait(20); // setup time is 10ns, but minimum pulse width of CLK is 20ns
 }
 
-void latchHapticRegisters() {
+static void latchHapticRegisters() {
     GPIOA->BSRR = (1<<3) | (1<<7); // Set LE on PA3 and PA7;
     nano_wait(20); // min pulse width is 20ns
     GPIOA->BRR = (1<<3) | (1<<7); // Reset LE on PA3 and PA7;
@@ -106,7 +64,7 @@ void enableHapticOutputs(uint8_t left, uint8_t right) {
 }
 
 
-void setupTimer3() {
+static void setupTimer3() {
     // Setup for 200 Hz
     TIM3->CR1 &= ~TIM_CR1_CEN;
     RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
@@ -120,6 +78,9 @@ void setupTimer3() {
 
 void TIM3_IRQHandler() {
     TIM3->SR &= ~TIM_SR_UIF; // acknowledge interrupt
+
+    int8_t distanceVector[NUMBER_OF_FINGERS];
+    GlobalVariables_Read(Global_ResolvedFingerDistances, distanceVector);
 
     // Track how many fingers on each hand are "far" from accurate position. If
     // whole hand is far from target, use wrist motors instead of finger motors
@@ -223,3 +184,44 @@ void TIM3_IRQHandler() {
     latchHapticRegisters();
 }
 
+void initializeHapticState() {
+    // This will use Port A, pins 1-8. Don't use PA0 since it's connected to something else on dev board
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN; // use Port A
+
+    // PA1: SDI  RightHand
+    // PA2: CLK  RightHand
+    // PA3: LE   RightHand
+    // PA4: OE   RightHand
+    // PA5: SDI  LeftHand
+    // PA6: CLK  LeftHand
+    // PA7: LE   LeftHand
+    // PA8: OE   LeftHand
+
+    GPIOA->MODER &= ~(GPIO_MODER_MODER1 | GPIO_MODER_MODER2 | GPIO_MODER_MODER3
+            | GPIO_MODER_MODER4 | GPIO_MODER_MODER5 | GPIO_MODER_MODER6
+            | GPIO_MODER_MODER7 | GPIO_MODER_MODER8);
+    GPIOA->MODER |= GPIO_MODER_MODER1_0 | GPIO_MODER_MODER2_0
+            | GPIO_MODER_MODER3_0 | GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0
+            | GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0 | GPIO_MODER_MODER8_0;
+    GPIOA->BSRR = GPIO_BSRR_BR_1 | GPIO_BSRR_BR_2 | GPIO_BSRR_BR_3
+            | GPIO_BSRR_BR_4 | GPIO_BSRR_BR_5 | GPIO_BSRR_BR_6 | GPIO_BSRR_BR_7
+            | GPIO_BSRR_BR_8;
+
+    for (int i = 0; i < NUMBER_OF_FINGERS; ++i) {
+        fingerHapticStates[i].dutyCycle = 0;
+        fingerHapticStates[i].period = 20;
+        fingerHapticStates[i].leftActive = 0;
+        fingerHapticStates[i].rightActive = 0;
+        fingerHapticStates[i].subcycleCount = 0;
+    }
+    for (int i = 0; i < 2; ++i) {
+        wristHapticState[i].dutyCycle = 0;
+        wristHapticState[i].period = 20;
+        wristHapticState[i].leftActive = 1;
+        wristHapticState[i].rightActive = 1;
+        wristHapticState[i].subcycleCount = 0;
+    }
+
+    setupTimer3();
+    enableHapticOutputs(1, 1);
+}

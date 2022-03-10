@@ -5,6 +5,7 @@
 #include "haptic-piano-tutor-library/src/tty.h"
 #include "InputInterfaces.h"
 #include "lcd.h"
+#include "motors.h"
 #include "modules/GlobalVariables.h"
 #include "modules/MusicManager.h"
 #include "modules/Song.h"
@@ -21,6 +22,7 @@ int main(void) {
     MusicManager_Init(&musicManager, &config);
     Ble_Init();
     ButtonInterface_Init();
+    initializeHapticState();
     SystemStateManager_Init();
     ScreenInterface_Init();
 

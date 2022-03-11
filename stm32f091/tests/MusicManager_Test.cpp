@@ -7,6 +7,7 @@ extern "C"
 #include "GlobalVariables.h"
 #include "MusicManager.h"
 #include "Song.h"
+#include "SystemStateManager.h"
 }
 
 static const Note_t channel1[] = {
@@ -117,7 +118,31 @@ TEST(MusicManager, ShouldRequestFirstNoteOnInit) {
     CheckDesiredFingerPositions(expected, actual);
 }
 
+TEST(MusicManager, ShouldNotAdvanceProgressInSongWhenNotRunning) {
+    SystemState_t state = SystemState_Idle;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    ChangeSoundDetectedSignal();
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    expected[Finger_Right1] = Key_C4;
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+
+    ChangeNoteForwardSignal();
+
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+}
+
 TEST(MusicManager, ShouldRequestNextNoteWhenSoundIsDetected) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+
     ChangeSoundDetectedSignal();
 
     Key_t expected[] = {
@@ -137,7 +162,12 @@ TEST(MusicManager, ShouldRequestNextNoteWhenSoundIsDetected) {
     CheckDesiredFingerPositions(expected, actual);
 }
 
+// Not possible to change song index when running during normal use,
+// but possible during debugging
 TEST(MusicManager, ShouldStartAnotherSongAtBeginningWhenSongChanges) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+
     ChangeSoundDetectedSignal();
 
     uint8_t index = 1;
@@ -159,9 +189,29 @@ TEST(MusicManager, ShouldStartAnotherSongAtBeginningWhenSongChanges) {
     CheckDesiredFingerPositions(expected, actual);
 }
 
+TEST(MusicManager, ShouldResetSongProgressWhenStopping) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+    ChangeSoundDetectedSignal();
+
+    state = SystemState_Idle;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    expected[Finger_Right1] = Key_C4;
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+}
+
 TEST(MusicManager, ShouldRequestConcurrentNotes) {
     uint8_t index = 2;
     GlobalVariables_Write(Global_SongIndex, &index);
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
 
     Key_t expected[] = {
         Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
@@ -184,6 +234,8 @@ TEST(MusicManager, ShouldRequestConcurrentNotes) {
 TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnSoundDetected) { // for music with syncopation
     uint8_t index = 3;
     GlobalVariables_Write(Global_SongIndex, &index);
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
 
     Key_t expected[] = {
         Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
@@ -214,6 +266,8 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnSoundDetected) { // f
 TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnNoteForward) { // for music with syncopation
     uint8_t index = 3;
     GlobalVariables_Write(Global_SongIndex, &index);
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
 
     Key_t expected[] = {
         Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
@@ -243,6 +297,9 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnNoteForward) { // for
 TEST(MusicManager, ShouldGoBackToClosestNoteInAnyChannelOnNoteBackward) { // for music with syncopation
     uint8_t index = 3;
     GlobalVariables_Write(Global_SongIndex, &index);
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+
     ChangeNoteForwardSignal();
     ChangeNoteForwardSignal();
 
@@ -270,6 +327,8 @@ TEST(MusicManager, ShouldGoBackToClosestNoteInAnyChannelOnNoteBackward) { // for
 TEST(MusicManager, ShouldRequestRestWhenEndOfChannelIsReached) {
     uint8_t index = 4;
     GlobalVariables_Write(Global_SongIndex, &index);
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
 
     ChangeSoundDetectedSignal();
 
@@ -286,6 +345,8 @@ TEST(MusicManager, ShouldRequestRestWhenEndOfChannelIsReached) {
 TEST(MusicManager, ShouldRequestRestWhenEndOfSongIsReached) {
     uint8_t index = 4;
     GlobalVariables_Write(Global_SongIndex, &index);
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
 
     ChangeSoundDetectedSignal();
     ChangeSoundDetectedSignal();

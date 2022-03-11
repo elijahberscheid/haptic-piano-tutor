@@ -1,5 +1,6 @@
 #include "GlobalVariables.h"
 #include "MusicManager.h"
+#include "SystemStateManager.h"
 
 #include <stdio.h>
 
@@ -116,30 +117,37 @@ static void SoundDetected(void *context, const void *data) {
     MusicManager_t *instance = (MusicManager_t *) context;
     IGNORE(data);
 
-    uint8_t index = 0;
-    GlobalVariables_Read(Global_SongIndex, &index);
-    const Song_t *song = &instance->config->songs[index];
+    SystemState_t state;
+    GlobalVariables_Read(Global_SystemState, &state);
 
-    uint32_t possibleNextTicks[Song_MaxConcurrentNotes] = { 0 };
-    for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
-        possibleNextTicks[channelIndex] = FindNextTicks(instance, song->channels[channelIndex]);
-    }
+    if (state == SystemState_Running) {
+        uint8_t index = 0;
+        GlobalVariables_Read(Global_SongIndex, &index);
+        const Song_t *song = &instance->config->songs[index];
 
-    uint32_t minPossibleNextTick = UINT32_MAX;
-    for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
-        if ((possibleNextTicks[channelIndex] < minPossibleNextTick) && (possibleNextTicks[channelIndex] != TickNumberNotFound)) {
-            minPossibleNextTick = possibleNextTicks[channelIndex];
+        uint32_t possibleNextTicks[Song_MaxConcurrentNotes] = { 0 };
+        for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
+            possibleNextTicks[channelIndex] = FindNextTicks(instance, song->channels[channelIndex]);
         }
-    }
-    instance->ticks = minPossibleNextTick;
 
-    UpdateDesiredFingerPositions(instance);
+        uint32_t minPossibleNextTick = UINT32_MAX;
+        for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
+            if ((possibleNextTicks[channelIndex] < minPossibleNextTick) && (possibleNextTicks[channelIndex] != TickNumberNotFound)) {
+                minPossibleNextTick = possibleNextTicks[channelIndex];
+            }
+        }
+        instance->ticks = minPossibleNextTick;
+
+        UpdateDesiredFingerPositions(instance);
+    }
 }
 
 static void NoteBackwardChanged(void *context, const void *data) {
     MusicManager_t *instance = (MusicManager_t *) context;
     IGNORE(data);
 
+    // not needed to check for running state,
+    // because will always be at beginnning of song in any state other than running, so it will not go back
     uint8_t index = 0;
     GlobalVariables_Read(Global_SongIndex, &index);
     const Song_t *song = &instance->config->songs[index];
@@ -168,6 +176,16 @@ static void SongIndexChanged(void *context, const void *data) {
     UpdateDesiredFingerPositions(instance);
 }
 
+static void SystemStateChanged(void *context, const void *data) {
+    MusicManager_t *instance = (MusicManager_t *) context;
+    SystemState_t *state = (SystemState_t *) data;
+
+    if (*state == SystemState_Idle) {
+        instance->ticks = 0;
+        UpdateDesiredFingerPositions(instance);
+    }
+}
+
 void MusicManager_Init(MusicManager_t *instance, const MusicManagerConfig_t *config) {
     instance->config = config;
     instance->ticks = 0;
@@ -182,4 +200,6 @@ void MusicManager_Init(MusicManager_t *instance, const MusicManagerConfig_t *con
     GlobalVariables_Subscribe(Global_NoteBackwardSignal, &noteBackwardSubscription);
     const GlobalVariables_Subscription_t songIndexSubscription = { .context = instance, .callback = SongIndexChanged };
     GlobalVariables_Subscribe(Global_SongIndex, &songIndexSubscription);
+    const GlobalVariables_Subscription_t systemStateSubscription = { .context = instance, .callback = SystemStateChanged };
+    GlobalVariables_Subscribe(Global_SystemState, &systemStateSubscription);
 }

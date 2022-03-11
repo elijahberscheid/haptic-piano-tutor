@@ -312,7 +312,7 @@ TEST(SystemStateManager, ShouldTransitionPausedToRunningWhenStartPressed) {
     CheckStateIs(SystemState_Running);
 }
 
-TEST(SystemStateManager, ShouldTransitionRunningToPausedWhenStopPressed) {
+TEST(SystemStateManager, ShouldTransitionRunningToIdleWhenStopPressed) {
     SystemState_t state = SystemState_Running;
     GlobalVariables_Write(Global_SystemState, &state);
 

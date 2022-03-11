@@ -236,15 +236,34 @@ TEST(SystemStateManager, ShouldResolveFingerDistancesWhenModeChangesToRightHande
     CheckResolvedDistances(expected);
 }
 
-TEST(SystemStateManager, ShouldResolveFingerDistancesToRestWhenStateIsNotRunning) {
-    int8_t expected[] = {
-        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
-        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
-    };
+TEST(SystemStateManager, ShouldResolveFingerDistancesWhenModeChangesToBothHands) {
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+    HandedMode_t mode = HandedMode_Both;
+    GlobalVariables_Write(Global_HandedMode, &mode);
 
+    int8_t expected[] = {
+        -5, -4, -3, -2, -1,
+        1, 2, 3, 4, 5
+    };
+    CheckResolvedDistances(expected);
+}
+
+TEST(SystemStateManager, ShouldResolveFingerDistancesToRestWhenStateIsNotRunning) {
     for (SystemState_t state = 0; state < SystemState_NumberOfStates; state++) {
-        if (state != SystemState_Idle) {
-            GlobalVariables_Write(Global_SystemState, &state);
+        GlobalVariables_Write(Global_SystemState, &state);
+        if (state != SystemState_Running) {
+            int8_t expected[] = {
+                Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+                Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+            };
+            CheckResolvedDistances(expected);
+        }
+        else {
+            int8_t expected[] = {
+                -5, -4, -3, -2, -1,
+                1, 2, 3, 4, 5
+            };
             CheckResolvedDistances(expected);
         }
     }

@@ -29,7 +29,10 @@ static void IncrementHandedMode(void) {
     GlobalVariables_Write(Global_HandedMode, &mode);
 }
 
-static void ResolveFingerDistances() {
+static void ResolveFingerDistances(void *context, const void *data) {
+    IGNORE(context);
+    IGNORE(data);
+
     int8_t distances[DistanceArrayLength];
     GlobalVariables_Read(Global_FingerDistances, distances);
 
@@ -460,20 +463,6 @@ static void CalibrationErrorChanged(void *context, const void *data) {
     }
 }
 
-static void FingerDistancesChanged(void *context, const void *data) {
-    IGNORE(context);
-    IGNORE(data);
-
-    ResolveFingerDistances();
-}
-
-static void ModeChanged(void *context, const void *data) {
-    IGNORE(context);
-    IGNORE(data);
-
-    ResolveFingerDistances();
-}
-
 void SystemStateManager_Init(void) {
     const GlobalVariables_Subscription_t leftButtonSubscription = { .context = NULL, .callback = LeftButtonPressed };
     GlobalVariables_Subscribe(Global_LeftButtonSignal, &leftButtonSubscription);
@@ -496,11 +485,10 @@ void SystemStateManager_Init(void) {
     const GlobalVariables_Subscription_t calibrationErrorSubscription = { .context = NULL, .callback = CalibrationErrorChanged };
     GlobalVariables_Subscribe(Global_CalibrationError, &calibrationErrorSubscription);
 
-    const GlobalVariables_Subscription_t fingerDistancesSubscription = { .context = NULL, .callback = FingerDistancesChanged };
-    GlobalVariables_Subscribe(Global_FingerDistances, &fingerDistancesSubscription);
-
-    const GlobalVariables_Subscription_t modeSubscription = { .context = NULL, .callback = ModeChanged };
-    GlobalVariables_Subscribe(Global_HandedMode, &modeSubscription);
+    const GlobalVariables_Subscription_t resolveFingerDistancesSubscription = { .context = NULL, .callback = ResolveFingerDistances };
+    GlobalVariables_Subscribe(Global_FingerDistances, &resolveFingerDistancesSubscription);
+    GlobalVariables_Subscribe(Global_HandedMode, &resolveFingerDistancesSubscription);
+    GlobalVariables_Subscribe(Global_SystemState, &resolveFingerDistancesSubscription);
 
     SystemState_t state = SystemState_Idle;
     GlobalVariables_Write(Global_SystemState, &state);
@@ -508,9 +496,7 @@ void SystemStateManager_Init(void) {
     HandedMode_t mode = HandedMode_Both;
     GlobalVariables_Write(Global_HandedMode, &mode);
     // don't need to resolve if initializing handed mode to something not 0, but here just in case it changes
-    int8_t distances[DistanceArrayLength] = { 0 };
-    GlobalVariables_Read(Global_FingerDistances, distances);
-    ResolveFingerDistances();
+    ResolveFingerDistances(NULL, NULL);
 
     uint8_t tempo = DefaultTempo;
     GlobalVariables_Write(Global_Tempo, &tempo);

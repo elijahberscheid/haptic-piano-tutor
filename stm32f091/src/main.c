@@ -6,6 +6,7 @@
 #include "InputInterfaces.h"
 #include "lcd.h"
 #include "motors.h"
+#include "modules/FingerDistanceCalculator.h"
 #include "modules/GlobalVariables.h"
 #include "modules/MusicManager.h"
 #include "modules/Song.h"
@@ -20,6 +21,7 @@ int main(void) {
     tty_init();
     GlobalVariables_Init();
     MusicManager_Init(&musicManager, &config);
+    FingerDistanceCalculator_Init();
     Ble_Init();
     ButtonInterface_Init();
     initializeHapticState();

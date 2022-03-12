@@ -17,10 +17,19 @@ from bluepy import btle
 # References: https://pypi.org/project/RPi.GPIO/ 
 import RPi.GPIO as GPIO
 
-# Assuming a height of 31" from piano keyboard to camera lens
+# Assuming a height of 35" from piano keyboard to camera lens
+# Camera is expected 
 # Establish resolution dimensions for the USB
 camX = 1920
 camY = 700
+# Calibration Constants (as intended for resolution and camera height)
+lowerXLimit = 200
+upperXLimitL = 1100
+upperXLimitH = 1300
+xTolerance = .025*camX
+maxDeltaY = 250
+tapeBoxAreaL = 120
+tapeBoxAreaH = 325
 
 # Establish a BLE pairing with the MCU
 def establishBLE():
@@ -34,10 +43,8 @@ def establishBLE():
             dev = btle.Peripheral("62:00:A1:21:6E:67")
             passthroughUuid = btle.UUID("0000ffe0-0000-1000-8000-00805f9b34fb")
             passthroughService = dev.getServiceByUUID(passthroughUuid)
-
             writeUuid = btle.UUID("0000ffe9-0000-1000-8000-00805f9b34fb")
             writeCharacteristic = passthroughService.getCharacteristics(writeUuid)[0]
-
             GPIO.output(18, 1) # Pin 18 (Blue LED) on
             print("Pairing Successful")
             loopVar = False
@@ -62,65 +69,240 @@ def initCamera():
     print("Camera Initialized")
     return camera
 
+# This function, given a still image from the USB camera, returns the four tape contours
+def tapeCalibration(img):
+    # Structure to return
+    tapeContours = []
+    if np.size(img) > 0:
+        # To save an image for testing
+        # np.save("sampleImg.npy", img)
+        
+        # First find green retroreflective tape coordinates
+        # https://techvidvan.com/tutorials/detect-objects-of-similar-color-using-opencv-in-python/
+        # convert to hsv colorspace
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        
+        # lower bound and upper bound for Green color
+        lower_bound = np.array([60, 115, 60])   
+        upper_bound = np.array([100, 255, 255])
+        
+        # Values for 477 Lab Testing
+        #lower_bound = np.array([60, 115, 60])   
+        #upper_bound = np.array([100, 255, 255])    
+        
+        # find the colors within the boundaries
+        mask = cv2.inRange(hsv, lower_bound, upper_bound)
+        
+        #define kernel size  
+        kernel = np.ones((8,8),np.uint8)
+        
+        # Remove unnecessary noise from mask
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        
+        # Segment only the detected region
+        segmented_img = cv2.bitwise_and(img, img, mask=mask)
+        
+        # Find contours from the mask
+        contours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # Print contours, debugging purposes
+        output = cv2.drawContours(segmented_img, contours, -1, (0, 0, 255), 3)
+        
+        # Showing the output, debugging purposes
+        cv2.imshow("Calibration Output", output)
+        
+        # Determining which contours correspond to the tape
+        # Algorithm for Tape Detection v2:
+        if(len(contours) < 4):
+            BleTransmitError(1)
+            print("***Error Occured*** tapeCalibration Tape Detection Error Type 1") # Contours not detected, USB Camera or landmarks hidden
+        else:
+            sampleContour = []
+            # Filtering based on X pixel location
+            for contour in contours:
+                sampleX = contour[0][0][0]
+                if(sampleX < lowerXLimit):
+                    sampleContour.append(contour)
+                elif(sampleX > upperXLimitL and sampleX < upperXLimitH):
+                    sampleContour.append(contour)
+            if(len(sampleContour) < 4):
+                BleTransmitError(2)
+                print("***Error Occured*** tapeCalibration Tape Detection Error Type 2") # Landmarks not in expected x range
+            else:
+                sampleAreas = []
+                # Filtering based on contour area
+                for sample in sampleContour:
+                    samArea = cv2.contourArea(sample)
+                    if(samArea < tapeBoxAreaH and samArea > tapeBoxAreaL):
+                        sampleAreas.append(sample)
+                if(len(sampleAreas) < 4):
+                    BleTransmitError(3)
+                    print("***Error Occured*** tapeCalibration Tape Detection Error Type 3") # USB Camera too close or far
+                else:
+                    sampleSimilar = []
+                    # Filtering based on similar x location (must have another contour present with similar location)
+                    for refined in sampleAreas:
+                        sampleX = refined[0][0][0]
+                        for refined2 in sampleAreas:
+                            sample2X = refined2[0][0][0]
+                            difX = abs(sampleX - sample2X)
+                            if(difX < xTolerance and refined[0][0][1] != refined2[0][0][1]):
+                                sampleSimilar.append(refined)
+                                sampleSimilar.append(refined2)
+                                sampleAreas.remove(refined)
+                                sampleAreas.remove(refined2)
+                                break
+                    if(len(sampleSimilar) < 4):
+                        BleTransmitError(4)
+                        print("***Error Occured*** tapeCalibration Tape Detection Error Type 4") # Keyboard or camera lense needs straightening 
+                    else:
+                        sampleSimilarY = []
+                        # Filtering based on similar y location (must have another contour present with similar location)
+                        yTolerance = xTolerance
+                        for superRefined in sampleSimilar:
+                             sampleY = superRefined[0][0][1]
+                             for superRefined2 in sampleSimilar:
+                                 sample2Y = superRefined[0][0][1]
+                                 difY = abs(sampleY - sample2Y)
+                                 if(difY < yTolerance and superRefined[0][0][0] != superRefined2[0][0][0]):
+                                     sampleSimilarY.append(superRefined)
+                                     sampleSimilarY.append(superRefined2)
+                                     sampleSimilar.remove(superRefined)
+                                     sampleSimilar.remove(superRefined2)
+                                     break
+                        if(len(sampleSimilarY) < 4):
+                            BleTransmitError(4)
+                            print("***Error Occured*** tapeCalibration Tape Detection Error Type 5") # Keyboard or camera lense needs straightening 
+                        else:
+                            # Final check, filtering based on maximum y seperation of landmarks
+                            global camY
+                            lowestY = camY + 1
+                            highestY = -1
+                            for refinedCubed in sampleSimilarY:
+                                sampleY = refined[0][0][1]
+                                if(sampleY < lowestY):
+                                    lowestY = sampleY
+                                if(sampleY > highestY):
+                                    highestY = sampleY
+                            print(str(highestY - lowestY))
+                            if(highestY - lowestY > maxDeltaY):
+                                BleTransmitError(3)
+                                print("***Error Occured*** tapeCalibration Tape Detection Error Type 6") # Camera is either too close or too far
+                            # If code reaches here, tape has been detected
+                            tapeContours = sampleSimilarY
+    else:
+        BleTrasmitError(0)
+        print("***Error Occured*** expectedKeyGeneration USB Camera Error")
+    return tapeContours
+
 # Given a picture from the USB camera, this function generates the expected piano key
 # locations and returns them in the keyContours data structure. As an 88-key piano is
 # expected, the keyContours structure will have 88 entries.
 def expectedKeyGeneration(cap):
     keyContours = []
-    success, img = cap.read()
-    for _ in range(10):
-        success, img = cap.read()
-    if np.size(img) > 0:
-        # First find green retroreflective tape coordinates
-        # https://techvidvan.com/tutorials/detect-objects-of-similar-color-using-opencv-in-python/
-        # convert to hsv colorspace
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        # lower bound and upper bound for Green color
-        lower_bound = np.array([60, 115, 60])   
-        upper_bound = np.array([100, 255, 255])
-        # Values for 477 Lab Testing
-        #lower_bound = np.array([60, 115, 60])   
-        #upper_bound = np.array([100, 255, 255])    
-        # find the colors within the boundaries
-        mask = cv2.inRange(hsv, lower_bound, upper_bound)
-        #define kernel size  
-        kernel = np.ones((8,8),np.uint8)
-        # Remove unnecessary noise from mask
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        # Segment only the detected region
-        segmented_img = cv2.bitwise_and(img, img, mask=mask)
-        # Find contours from the mask
-        contours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        # Print contours, debugging purposes
-        print(contours)
-        output = cv2.drawContours(segmented_img, contours, -1, (0, 0, 255), 3)
-        # Showing the output, debugging purposes
-        cv2.imshow("Output", output)
-        # Determining which contours correspond to the tape
-        global camX
-        xLimit = .5*camX
-        xTolerance = .025*camX
-        sampleContourX = []
-        for contour in contours:
-            sampleContourX.append(contour[0][0][0])
-        matchingPairs = []
-        optimizer = 1
-        for sampledX1 in sampleContourX:
-            for sampledX2 in sampleContourX[optimizer :]:
-                if(sampledX1 < sampledX2):
-                    if(sampledX1 + xTolerance >= sampledX2):
-                        matchingPairs.append((sampledX1, sampledX2))    
-                else:
-                    if(sampledX1 - xTolerance <= sampledX2):
-                        matchingPairs.append((sampledX1, sampledX2))
-            optimizer += 1         
-        print(sampleContourX)
-        print(matchingPairs)
-    else:
-        BleTrasmitError(0)
-        print("***Error Occured*** expectedKeyGeneration USB Camera Error")
-    return keyContours
+    #success, img = cap.read()
+    #for _ in range(10):
+    #    success, img = cap.read()
+    img = np.load("sampleImg.npy")
+    cv2.imshow("Sample Image", img)
+    tapeContours = tapeCalibration(img)
+    
+    if(len(tapeContours) != 4):
+        BleTransmitError(5)
+        print("***Error Occured*** expectedKeyGeneration Tape Detection Error Type 7") # Too much noise, remove other green objects
+    
+    # Extract the perimeter corners of the keyboard from the tape contours
+    # NOTE: keyboard is expected to be upside down in the USB camera feed
+    upperLeftTape = 0
+    upperRightTape = 0
+    lowerLeftTape = 0
+    lowerRightTape = 0
+    
+    xMidway = 0
+    yMidway = 0
+    for contour in tapeContours:
+        xMidway += contour[0][0][0]
+        yMidway += contour[0][0][1]
+    xMidway = xMidway/4
+    yMidway = yMidway/4
+    
+    for contour in tapeContours:
+        if(contour[0][0][0] < xMidway and contour[0][0][1] < yMidway):
+            lowerRightTape = contour
+        elif(contour[0][0][0] < xMidway and contour[0][0][1] > yMidway):
+            upperRightTape = contour
+        elif(contour[0][0][0] > xMidway and contour[0][0][1] < yMidway):
+            lowerLeftTape = contour
+        elif(contour[0][0][0] > xMidway and contour[0][0][1] > yMidway):
+            upperLeftTape = contour
+        else:
+            BleTransmitError(5)
+            print("***Error Occured*** expectedKeyGeneration Tape Detection Error Type 8") # Too much noise, remove other green objects
+    
+    # Define perimeter corner coordinates:
+    lowerLeftX = 0
+    lowerLeftY = 0
+    upperLeftX = 0
+    upperLeftY = 0
+    lowerRightX = 0
+    lowerRightY = 0
+    upperRightX = 0
+    upperRightY = 0
+    
+    for coordinate in lowerLeftTape:
+        rcoordinate = coordinate[0]
+        if(lowerLeftX == 0):
+            lowerLeftX = rcoordinate[0]
+        if(lowerLeftY == 0):
+            lowerLeftY = rcoordinate[1]
+        if(rcoordinate[0] < lowerLeftX):
+            lowerLeftX = rcoordinate[0]
+        if(rcoordinate[1] > lowerLeftY):
+            lowerLeftY = rcoordinate[1]
+    
+    for coordinate in upperLeftTape:
+        rcoordinate = coordinate[0]
+        if(upperLeftX == 0):
+            upperLeftX = rcoordinate[0]
+        if(upperLeftY == 0):
+            upperLeftY = rcoordinate[1]
+        if(rcoordinate[0] < upperLeftX):
+            upperLeftX = rcoordinate[0]
+        if(rcoordinate[1] < upperLeftY):
+            upperLeftY = rcoordinate[1]
+            
+    for coordinate in lowerRightTape:
+        rcoordinate = coordinate[0]
+        if(lowerRightX == 0):
+            lowerRightX = rcoordinate[0]
+        if(lowerRightY == 0):
+            lowerRightY = rcoordinate[1]
+        if(rcoordinate[0] > lowerRightX):
+            lowerRightX = rcoordinate[0]
+        if(rcoordinate[1] > lowerRightY):
+            lowerRightY = rcoordinate[1]
+
+    for coordinate in upperRightTape:
+        rcoordinate = coordinate[0]
+        if(upperRightX == 0):
+            upperRightX = rcoordinate[0]
+        if(upperRightY == 0):
+            upperRightY = rcoordinate[1]
+        if(rcoordinate[0] > upperRightX):
+            upperRightX = rcoordinate[0]
+        if(rcoordinate[1] < upperRightY):
+            upperRightY = rcoordinate[1]
+            
+    print("KEYBOARD CORNER POINTS")
+    print("x: " + str(upperLeftX))
+    print("y: " + str(upperLeftY))
+    print("x: " + str(lowerLeftX))
+    print("y: " + str(lowerLeftY))
+    print("x: " + str(lowerRightX))
+    print("y: " + str(lowerRightY))
+    print("x: " + str(upperRightX))
+    print("y: " + str(upperRightY))
 
 # Given the keyContours structure, detailing the expected piano key pixel locations, and
 # the lmList structure, detailing the fingertip pixel locations of the user, this function
@@ -216,21 +398,55 @@ def BleTransmit():
 
 # Called upon to transmit an error packet in the event of a calibration error
 def BleTransmitError(code):
-    # USB Camera Error
+    # USB Camera Error (0)
     if(code == 0):
-        try:
-            writeCharacteristic.write(bytes("error code 0"))
-        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-            GPIO.output(18, 0)
-            establishBLE()
-    # Retroreflective Tape Detection Error
+        print("error 0")
+        #try:
+        #    writeCharacteristic.write(bytes("error code 0"))
+        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        #    GPIO.output(18, 0)
+        #    establishBLE()
+    # Retroreflective Tape Detection Error - Tape likely blocked (1)
     elif(code == 1):
-        try:
-            writeCharacteristic.write(bytes("error code 1"))
-        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-            GPIO.output(18, 0)
-            establishBLE()
-    
+        print("error 1")
+        #try:
+        #    writeCharacteristic.write(bytes("error code 1"))
+        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        #    GPIO.output(18, 0)
+        #    establishBLE()
+    # Retroreflective Tape Detection Error - Tape landmarks not in expected x range, keyboard needs horizontal adjustment, camera may be too close/far
+    elif(code == 2):
+        print("error 2")
+        #try:
+        #    writeCharacteristic.write(bytes("error code 2"))
+        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        #    GPIO.output(18, 0)
+        #    establishBLE()
+    # Retroreflective Tape Detection Error - USB Camera too close or far
+    elif(code == 3):
+        print("error 3")
+        #try:
+        #    writeCharacteristic.write(bytes("error code 3"))
+        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        #    GPIO.output(18, 0)
+        #    establishBLE()
+    # Retroreflective Tape Detection Error - Keyboard or camera lense needs straightening 
+    elif(code == 4):
+        print("error 4")
+        #try:
+        #    writeCharacteristic.write(bytes("error code 4"))
+        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        #    GPIO.output(18, 0)
+        #    establishBLE()
+    # Retroreflective Tape Detection Error - Too much noise present, remove other green objects from USB camera frame 
+    elif(code == 5):
+        print("error 5")
+        #try:
+        #    writeCharacteristic.write(bytes("error code 4"))
+        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        #    GPIO.output(18, 0)
+        #    establishBLE()
+        
 # Main function
 def main():
     # Bluetooth Initialization 

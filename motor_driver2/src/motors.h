@@ -4,8 +4,8 @@
 #include "stm32f0xx.h"
 #include <stdbool.h>
 #include <stdint.h>
-
 #define NUMBER_OF_FINGERS 10
+
 int8_t distanceVector[NUMBER_OF_FINGERS];
 
 typedef struct _hapticState_t {

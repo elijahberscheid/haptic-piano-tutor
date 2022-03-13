@@ -5,27 +5,42 @@
 
 int main(void) {
     initializeHapticState();
+    for (int i = 0; i < 10; ++i) distanceVector[i] = 88;
 
-    // Setup some buttons for basic tests
-    RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+    RCC->AHBENR |= RCC_AHBENR_GPIOCEN; // Setup some buttons for basic tests
 
     setupTimer3();
-    enableHapticOutputs(1, 0); // enable left hand
+    enableHapticOutputs(1, 1);
 
     for(;;) {
-        int C6 = GPIOC->IDR & (1<<6);
-        int C7 = GPIOC->IDR & (1<<7);
-        int C8 = GPIOC->IDR & (1<<8);
-        int C9 = GPIOC->IDR & (1<<9);
-        int C11 = GPIOC->IDR & (1<<11);
-        int C12 = GPIOC->IDR & (1<<12);
+        int C6 = (GPIOC->IDR >> 6) & 1;
+        int C7 = (GPIOC->IDR >> 7) & 1;
+        int C8 = (GPIOC->IDR >> 8) & 1;
+        int C9 = (GPIOC->IDR >> 9) & 1;
+        int C11 = (GPIOC->IDR >> 11) & 1;
+        int C12 = (GPIOC->IDR >> 12) & 1;
 
         int inputNum = (C6 << 0) | (C7 << 1) | (C8 << 2) | (C9 << 3) | (C12 << 4) | (C11 << 5);
 
-        for (int i = 0; i < NUMBER_OF_FINGERS; ++i) distanceVector[i] = 88;
-
         if (inputNum < NUMBER_OF_FINGERS) {
-          distanceVector[inputNum] = 0;
+            for (int i = 0; i < 10; ++i) {
+                if (i == inputNum)
+                    distanceVector[i] = 0;
+                else
+                    distanceVector[i] = 88;
+            }
+        } else {
+            distanceVector[0] = 88;
+            distanceVector[1] = 88;
+            distanceVector[2] = 88;
+            distanceVector[3] = 88;
+            distanceVector[4] = 88;
+            distanceVector[5] = 16;
+            distanceVector[6] = 88;
+            distanceVector[7] = 88;
+            distanceVector[8] = 88;
+            distanceVector[9] = 88;
         }
     }
 }
+

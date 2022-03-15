@@ -10,6 +10,8 @@ extern "C"
 }
 
 TEST_GROUP(SystemStateManager) {
+    SystemStateManager_t instance;
+
     enum {
         DistanceArrayLength = 10,
         DefaultTempo = 60,
@@ -25,7 +27,7 @@ TEST_GROUP(SystemStateManager) {
         };
         GlobalVariables_Write(Global_FingerDistances, distances);
 
-        SystemStateManager_Init();
+        SystemStateManager_Init(&instance);
     }
 
     void teardown() {
@@ -269,19 +271,22 @@ TEST(SystemStateManager, ShouldResolveFingerDistancesToRestWhenStateIsNotRunning
     }
 }
 
-TEST(SystemStateManager, ShouldTransitionIdleToTempoWhenTempoPressed) {
-    PressTempoButton();
+// disallow transition to tempo when running or calibration error
+TEST(SystemStateManager, ShouldTransitionTempoAndBackToPreviousStateWhenTempoPressed) {
+    for (SystemState_t state = 0; state < SystemState_NumberOfStates; state++) {
+        GlobalVariables_Write(Global_SystemState, &state);
+        if ((state == SystemState_Running) || (state == SystemState_CalibrationError)) {
+            PressTempoButton();
+            CheckStateIs(state);
+        }
+        else if (state != SystemState_Tempo) {
+            PressTempoButton();
+            CheckStateIs(SystemState_Tempo);
 
-    CheckStateIs(SystemState_Tempo);
-}
-
-TEST(SystemStateManager, ShouldTransitionTempoToIdleWhenTempoPressed) {
-    SystemState_t state = SystemState_Tempo;
-    GlobalVariables_Write(Global_SystemState, &state);
-
-    PressTempoButton();
-
-    CheckStateIs(SystemState_Idle);
+            PressTempoButton();
+            CheckStateIs(state);
+        }
+    }
 }
 
 TEST(SystemStateManager, ShouldSetTempoToDefaultOnInit) {

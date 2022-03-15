@@ -16,6 +16,7 @@ extern const Song_t Song_songs[];
 static const MusicManagerConfig_t config = { .songs = Song_songs };
 
 static MusicManager_t musicManager;
+static SystemStateManager_t systemStateManger;
 
 int main(void) {
     tty_init();
@@ -25,7 +26,7 @@ int main(void) {
     Ble_Init();
     ButtonInterface_Init();
     initializeHapticState();
-    SystemStateManager_Init();
+    SystemStateManager_Init(&systemStateManger);
     ScreenInterface_Init();
 
     int i = 0;

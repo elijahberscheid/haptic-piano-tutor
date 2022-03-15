@@ -21,6 +21,10 @@ enum {
 };
 typedef uint8_t HandedMode_t; // assumed to be uint8_t in GlobalVariables.h
 
-void SystemStateManager_Init(void);
+typedef struct {
+    SystemState_t previousState;
+} SystemStateManager_t;
+
+void SystemStateManager_Init(SystemStateManager_t *instance);
 
 #endif

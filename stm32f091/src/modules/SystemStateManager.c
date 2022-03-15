@@ -61,7 +61,7 @@ static void ResolveFingerDistances(void *context, const void *data) {
     GlobalVariables_Write(Global_ResolvedFingerDistances, distances);
 }
 
-static void State_Idle(uint8_t action) {
+static void State_Idle(SystemStateManager_t *instance, uint8_t action) {
     switch (action) {
         case LeftButtonAction: {
             uint8_t songIndex = 0;
@@ -91,16 +91,19 @@ static void State_Idle(uint8_t action) {
         }
         case TempoButtonAction: {
             SystemState_t state = SystemState_Tempo;
+            instance->previousState = SystemState_Idle;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
         case StartButtonAction: {
             SystemState_t state = SystemState_Running;
+            instance->previousState = SystemState_Idle;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
         case CalibrationErrorAction: {
             SystemState_t state = SystemState_CalibrationError;
+            instance->previousState = SystemState_Idle;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
@@ -109,7 +112,7 @@ static void State_Idle(uint8_t action) {
     }
 }
 
-static void State_Running(uint8_t action) {
+static void State_Running(SystemStateManager_t *instance, uint8_t action) {
     switch (action) {
         case LeftButtonAction: {
             uint8_t noteBackwardSignal = 0;
@@ -131,16 +134,19 @@ static void State_Running(uint8_t action) {
         }
         case StartButtonAction: {
             SystemState_t state = SystemState_Paused;
+            instance->previousState = SystemState_Running;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
         case StopButtonAction: {
             SystemState_t state = SystemState_Idle;
+            instance->previousState = SystemState_Running;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
         case CalibrationErrorAction: {
             SystemState_t state = SystemState_CalibrationError;
+            instance->previousState = SystemState_Running;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
@@ -149,10 +155,11 @@ static void State_Running(uint8_t action) {
     }
 }
 
-static void State_Paused(uint8_t action) {
+static void State_Paused(SystemStateManager_t *instance, uint8_t action) {
     switch (action) {
         case StartButtonAction: {
             SystemState_t state = SystemState_Running;
+            instance->previousState = SystemState_Paused;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
@@ -160,13 +167,21 @@ static void State_Paused(uint8_t action) {
             IncrementHandedMode();
             break;
         }
+        case TempoButtonAction: {
+            SystemState_t state = SystemState_Tempo;
+            instance->previousState = SystemState_Paused;
+            GlobalVariables_Write(Global_SystemState, &state);
+            break;
+        }
         case StopButtonAction: {
             SystemState_t state = SystemState_Idle;
+            instance->previousState = SystemState_Paused;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
         case CalibrationErrorAction: {
             SystemState_t state = SystemState_CalibrationError;
+            instance->previousState = SystemState_Paused;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
@@ -175,7 +190,7 @@ static void State_Paused(uint8_t action) {
     }
 }
 
-static void State_Tempo(uint8_t action) {
+static void State_Tempo(SystemStateManager_t *instance, uint8_t action) {
     switch (action) {
         case LeftButtonAction: {
             uint8_t tempo = 0;
@@ -200,12 +215,14 @@ static void State_Tempo(uint8_t action) {
             break;
         }
         case TempoButtonAction: {
-            SystemState_t state = SystemState_Idle;
+            SystemState_t state = instance->previousState;
+            instance->previousState = SystemState_Tempo;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
         case CalibrationErrorAction: {
             SystemState_t state = SystemState_CalibrationError;
+            instance->previousState = SystemState_Tempo;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
@@ -214,10 +231,11 @@ static void State_Tempo(uint8_t action) {
     }
 }
 
-static void State_CalibrationError(uint8_t action) {
+static void State_CalibrationError(SystemStateManager_t *instance, uint8_t action) {
     switch (action) {
         case CalibrationErrorAction: {
             SystemState_t state = SystemState_Idle;
+            instance->previousState = SystemState_CalibrationError;
             GlobalVariables_Write(Global_SystemState, &state);
             break;
         }
@@ -227,7 +245,7 @@ static void State_CalibrationError(uint8_t action) {
 }
 
 static void LeftButtonPressed(void *context, const void *data) {
-    IGNORE(context);
+    SystemStateManager_t *instance = (SystemStateManager_t *) context;
     IGNORE(data);
 
     uint8_t action = LeftButtonAction;
@@ -236,23 +254,23 @@ static void LeftButtonPressed(void *context, const void *data) {
 
     switch (state) {
         case SystemState_Idle: {
-            State_Idle(action);
+            State_Idle(instance, action);
             break;
         }
         case SystemState_Running: {
-            State_Running(action);
+            State_Running(instance, action);
             break;
         }
         case SystemState_Paused: {
-            State_Paused(action);
+            State_Paused(instance, action);
             break;
         }
         case SystemState_Tempo: {
-            State_Tempo(action);
+            State_Tempo(instance, action);
             break;
         }
         case SystemState_CalibrationError: {
-            State_CalibrationError(action);
+            State_CalibrationError(instance, action);
             break;
         }
         default:
@@ -260,7 +278,7 @@ static void LeftButtonPressed(void *context, const void *data) {
     }
 }
 static void RightButtonPressed(void *context, const void *data) {
-    IGNORE(context);
+    SystemStateManager_t *instance = (SystemStateManager_t *) context;
     IGNORE(data);
 
     uint8_t action = RightButtonAction;
@@ -269,23 +287,23 @@ static void RightButtonPressed(void *context, const void *data) {
 
     switch (state) {
         case SystemState_Idle: {
-            State_Idle(action);
+            State_Idle(instance, action);
             break;
         }
         case SystemState_Running: {
-            State_Running(action);
+            State_Running(instance, action);
             break;
         }
         case SystemState_Paused: {
-            State_Paused(action);
+            State_Paused(instance, action);
             break;
         }
         case SystemState_Tempo: {
-            State_Tempo(action);
+            State_Tempo(instance, action);
             break;
         }
         case SystemState_CalibrationError: {
-            State_CalibrationError(action);
+            State_CalibrationError(instance, action);
             break;
         }
         default:
@@ -294,7 +312,7 @@ static void RightButtonPressed(void *context, const void *data) {
 }
 
 static void ModeButtonPressed(void *context, const void *data) {
-    IGNORE(context);
+    SystemStateManager_t *instance = (SystemStateManager_t *) context;
     IGNORE(data);
 
     uint8_t action = ModeButtonAction;
@@ -303,23 +321,23 @@ static void ModeButtonPressed(void *context, const void *data) {
 
     switch (state) {
         case SystemState_Idle: {
-            State_Idle(action);
+            State_Idle(instance, action);
             break;
         }
         case SystemState_Running: {
-            State_Running(action);
+            State_Running(instance, action);
             break;
         }
         case SystemState_Paused: {
-            State_Paused(action);
+            State_Paused(instance, action);
             break;
         }
         case SystemState_Tempo: {
-            State_Tempo(action);
+            State_Tempo(instance, action);
             break;
         }
         case SystemState_CalibrationError: {
-            State_CalibrationError(action);
+            State_CalibrationError(instance, action);
             break;
         }
         default:
@@ -328,7 +346,7 @@ static void ModeButtonPressed(void *context, const void *data) {
 }
 
 static void TempoButtonPressed(void *context, const void *data) {
-    IGNORE(context);
+    SystemStateManager_t *instance = (SystemStateManager_t *) context;
     IGNORE(data);
 
     uint8_t action = TempoButtonAction;
@@ -337,23 +355,23 @@ static void TempoButtonPressed(void *context, const void *data) {
 
     switch (state) {
         case SystemState_Idle: {
-            State_Idle(action);
+            State_Idle(instance, action);
             break;
         }
         case SystemState_Running: {
-            State_Running(action);
+            State_Running(instance, action);
             break;
         }
         case SystemState_Paused: {
-            State_Paused(action);
+            State_Paused(instance, action);
             break;
         }
         case SystemState_Tempo: {
-            State_Tempo(action);
+            State_Tempo(instance, action);
             break;
         }
         case SystemState_CalibrationError: {
-            State_CalibrationError(action);
+            State_CalibrationError(instance, action);
             break;
         }
         default:
@@ -362,7 +380,7 @@ static void TempoButtonPressed(void *context, const void *data) {
 }
 
 static void StartButtonPressed(void *context, const void *data) {
-    IGNORE(context);
+    SystemStateManager_t *instance = (SystemStateManager_t *) context;
     IGNORE(data);
 
     uint8_t action = StartButtonAction;
@@ -371,23 +389,23 @@ static void StartButtonPressed(void *context, const void *data) {
 
     switch (state) {
         case SystemState_Idle: {
-            State_Idle(action);
+            State_Idle(instance, action);
             break;
         }
         case SystemState_Running: {
-            State_Running(action);
+            State_Running(instance, action);
             break;
         }
         case SystemState_Paused: {
-            State_Paused(action);
+            State_Paused(instance, action);
             break;
         }
         case SystemState_Tempo: {
-            State_Tempo(action);
+            State_Tempo(instance, action);
             break;
         }
         case SystemState_CalibrationError: {
-            State_CalibrationError(action);
+            State_CalibrationError(instance, action);
             break;
         }
         default:
@@ -396,7 +414,7 @@ static void StartButtonPressed(void *context, const void *data) {
 }
 
 static void StopButtonPressed(void *context, const void *data) {
-    IGNORE(context);
+    SystemStateManager_t *instance = (SystemStateManager_t *) context;
     IGNORE(data);
 
     uint8_t action = StopButtonAction;
@@ -405,23 +423,23 @@ static void StopButtonPressed(void *context, const void *data) {
 
     switch (state) {
         case SystemState_Idle: {
-            State_Idle(action);
+            State_Idle(instance, action);
             break;
         }
         case SystemState_Running: {
-            State_Running(action);
+            State_Running(instance, action);
             break;
         }
         case SystemState_Paused: {
-            State_Paused(action);
+            State_Paused(instance, action);
             break;
         }
         case SystemState_Tempo: {
-            State_Tempo(action);
+            State_Tempo(instance, action);
             break;
         }
         case SystemState_CalibrationError: {
-            State_CalibrationError(action);
+            State_CalibrationError(instance, action);
             break;
         }
         default:
@@ -430,7 +448,7 @@ static void StopButtonPressed(void *context, const void *data) {
 }
 
 static void CalibrationErrorChanged(void *context, const void *data) {
-    IGNORE(context);
+    SystemStateManager_t *instance = (SystemStateManager_t *) context;
     IGNORE(data);
 
     uint8_t action = CalibrationErrorAction;
@@ -439,23 +457,23 @@ static void CalibrationErrorChanged(void *context, const void *data) {
 
     switch (state) {
         case SystemState_Idle: {
-            State_Idle(action);
+            State_Idle(instance, action);
             break;
         }
         case SystemState_Running: {
-            State_Running(action);
+            State_Running(instance, action);
             break;
         }
         case SystemState_Paused: {
-            State_Paused(action);
+            State_Paused(instance, action);
             break;
         }
         case SystemState_Tempo: {
-            State_Tempo(action);
+            State_Tempo(instance, action);
             break;
         }
         case SystemState_CalibrationError: {
-            State_CalibrationError(action);
+            State_CalibrationError(instance, action);
             break;
         }
         default:
@@ -463,29 +481,31 @@ static void CalibrationErrorChanged(void *context, const void *data) {
     }
 }
 
-void SystemStateManager_Init(void) {
-    const GlobalVariables_Subscription_t leftButtonSubscription = { .context = NULL, .callback = LeftButtonPressed };
+void SystemStateManager_Init(SystemStateManager_t *instance) {
+    instance->previousState = SystemState_Idle;
+
+    const GlobalVariables_Subscription_t leftButtonSubscription = { .context = instance, .callback = LeftButtonPressed };
     GlobalVariables_Subscribe(Global_LeftButtonSignal, &leftButtonSubscription);
 
-    const GlobalVariables_Subscription_t rightButtonSubscription = { .context = NULL, .callback = RightButtonPressed };
+    const GlobalVariables_Subscription_t rightButtonSubscription = { .context = instance, .callback = RightButtonPressed };
     GlobalVariables_Subscribe(Global_RightButtonSignal, &rightButtonSubscription);
 
-    const GlobalVariables_Subscription_t modeButtonSubscription = { .context = NULL, .callback = ModeButtonPressed };
+    const GlobalVariables_Subscription_t modeButtonSubscription = { .context = instance, .callback = ModeButtonPressed };
     GlobalVariables_Subscribe(Global_ModeButtonSignal, &modeButtonSubscription);
 
-    const GlobalVariables_Subscription_t tempoButtonSubscription = { .context = NULL, .callback = TempoButtonPressed };
+    const GlobalVariables_Subscription_t tempoButtonSubscription = { .context = instance, .callback = TempoButtonPressed };
     GlobalVariables_Subscribe(Global_TempoButtonSignal, &tempoButtonSubscription);
 
-    const GlobalVariables_Subscription_t startButtonSubscription = { .context = NULL, .callback = StartButtonPressed };
+    const GlobalVariables_Subscription_t startButtonSubscription = { .context = instance, .callback = StartButtonPressed };
     GlobalVariables_Subscribe(Global_StartButtonSignal, &startButtonSubscription);
 
-    const GlobalVariables_Subscription_t stopButtonSubscription = { .context = NULL, .callback = StopButtonPressed };
+    const GlobalVariables_Subscription_t stopButtonSubscription = { .context = instance, .callback = StopButtonPressed };
     GlobalVariables_Subscribe(Global_StopButtonSignal, &stopButtonSubscription);
 
-    const GlobalVariables_Subscription_t calibrationErrorSubscription = { .context = NULL, .callback = CalibrationErrorChanged };
+    const GlobalVariables_Subscription_t calibrationErrorSubscription = { .context = instance, .callback = CalibrationErrorChanged };
     GlobalVariables_Subscribe(Global_CalibrationError, &calibrationErrorSubscription);
 
-    const GlobalVariables_Subscription_t resolveFingerDistancesSubscription = { .context = NULL, .callback = ResolveFingerDistances };
+    const GlobalVariables_Subscription_t resolveFingerDistancesSubscription = { .context = instance, .callback = ResolveFingerDistances };
     GlobalVariables_Subscribe(Global_FingerDistances, &resolveFingerDistancesSubscription);
     GlobalVariables_Subscribe(Global_HandedMode, &resolveFingerDistancesSubscription);
     GlobalVariables_Subscribe(Global_SystemState, &resolveFingerDistancesSubscription);

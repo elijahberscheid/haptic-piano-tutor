@@ -11,6 +11,7 @@ typedef struct {
 typedef struct {
     const MusicManagerConfig_t *config;
     uint32_t ticks;
+    NoteLength_t currentNoteLength;
 } MusicManager_t;
 
 void MusicManager_Init(MusicManager_t *instance, const MusicManagerConfig_t *config);

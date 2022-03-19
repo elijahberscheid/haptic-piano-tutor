@@ -37,6 +37,7 @@ static uint32_t FindNextTicks(MusicManager_t *instance, const Note_t *channel) {
     return nextTicks;
 }
 
+// if instance->ticks is past the end of channel, returns the ticks corresponding to the last note
 static uint32_t FindPreviousTicks(MusicManager_t *instance, const Note_t *channel) {
     uint32_t previousTicks = 0;
     uint32_t noteIndex = 0;
@@ -99,6 +100,7 @@ static void UpdateDesiredFingerPositions(MusicManager_t *instance) {
         Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
         Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
     };
+    NoteLength_t shortestNoteLength = UINT8_MAX;
 
     for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
         if (song->channels[channelIndex] != NULL) {
@@ -106,11 +108,19 @@ static void UpdateDesiredFingerPositions(MusicManager_t *instance) {
             if (noteIndex != NoteIndexNotFound) {
                 Finger_t finger = song->channels[channelIndex][noteIndex].finger;
                 positions[finger] = song->channels[channelIndex][noteIndex].key;
+                NoteLength_t length = song->channels[channelIndex][noteIndex].length;
+                if (length < shortestNoteLength) {
+                    shortestNoteLength = length;
+                }
             }
+
         }
     }
 
     GlobalVariables_Write(Global_DesiredFingerPositions, positions);
+    GlobalVariables_Write(Global_CurrentNoteLength, &instance->currentNoteLength);
+
+    instance->currentNoteLength = shortestNoteLength;
 }
 
 static void SoundDetected(void *context, const void *data) {
@@ -173,6 +183,7 @@ static void SongIndexChanged(void *context, const void *data) {
     IGNORE(data);
 
     instance->ticks = 0;
+    instance->currentNoteLength = 0;
     UpdateDesiredFingerPositions(instance);
 }
 
@@ -182,6 +193,7 @@ static void SystemStateChanged(void *context, const void *data) {
 
     if (*state == SystemState_Idle) {
         instance->ticks = 0;
+        instance->currentNoteLength = 0;
         UpdateDesiredFingerPositions(instance);
     }
 }
@@ -189,6 +201,7 @@ static void SystemStateChanged(void *context, const void *data) {
 void MusicManager_Init(MusicManager_t *instance, const MusicManagerConfig_t *config) {
     instance->config = config;
     instance->ticks = 0;
+    instance->currentNoteLength = 0;
 
     UpdateDesiredFingerPositions(instance);
 

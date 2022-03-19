@@ -143,7 +143,7 @@ enum {
     NoteLength_Half = 32,
     NoteLength_Whole = 64
 };
-typedef uint8_t NoteLength_t;
+typedef uint8_t NoteLength_t;  // assumed to be uint8_t in GlobalVariables.h
 
 enum {
     Finger_Left5 = 0,

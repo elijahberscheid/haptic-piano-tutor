@@ -118,7 +118,7 @@ static void UpdateDesiredFingerPositions(MusicManager_t *instance) {
     }
 
     GlobalVariables_Write(Global_DesiredFingerPositions, positions);
-    GlobalVariables_Write(Global_CurrentNoteLength, &instance->currentNoteLength);
+    GlobalVariables_Write(Global_PreviousNoteLength, &instance->currentNoteLength);
 
     instance->currentNoteLength = shortestNoteLength;
 }

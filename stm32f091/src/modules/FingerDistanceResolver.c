@@ -80,7 +80,7 @@ static void SoundDetected(void *context, const void *data) {
         uint8_t tempo = 0;
         GlobalVariables_Read(Global_Tempo, &tempo);
         uint8_t noteLength = 0;
-        GlobalVariables_Read(Global_CurrentNoteLength, &noteLength);
+        GlobalVariables_Read(Global_PreviousNoteLength, &noteLength);
         // fastest note supported is 64th note, which is 1/16 the duration of a quarter note
         // that is the duration of one "tick"
         // tempo is in beats per minute, which is number of quarter notes per minute

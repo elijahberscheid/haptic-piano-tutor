@@ -105,9 +105,9 @@ TEST_GROUP(MusicManager) {
         }
     }
 
-    void CheckCurrentNoteLength(uint8_t expected) {
+    void CheckPreviousNoteLength(uint8_t expected) {
         uint8_t actual = 0;
-        GlobalVariables_Read(Global_CurrentNoteLength, &actual);
+        GlobalVariables_Read(Global_PreviousNoteLength, &actual);
         CHECK_EQUAL(expected, actual);
     }
 
@@ -123,7 +123,7 @@ TEST(MusicManager, ShouldRequestFirstNoteOnInit) {
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
     // 0th note has length 0 so it takes effect immediately
-    CheckCurrentNoteLength(0);
+    CheckPreviousNoteLength(0);
 }
 
 TEST(MusicManager, ShouldNotAdvanceProgressInSongWhenNotRunning) {
@@ -140,13 +140,13 @@ TEST(MusicManager, ShouldNotAdvanceProgressInSongWhenNotRunning) {
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(0);
+    CheckPreviousNoteLength(0);
 
     ChangeNoteForwardSignal();
 
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(0);
+    CheckPreviousNoteLength(0);
 }
 
 TEST(MusicManager, ShouldRequestNextNoteWhenSoundIsDetected) {
@@ -163,7 +163,7 @@ TEST(MusicManager, ShouldRequestNextNoteWhenSoundIsDetected) {
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(channel1[0].length); // length is length of previous note
+    CheckPreviousNoteLength(channel1[0].length); // length is length of previous note
 
     ChangeSoundDetectedSignal();
 
@@ -171,7 +171,7 @@ TEST(MusicManager, ShouldRequestNextNoteWhenSoundIsDetected) {
     expected[Finger_Right3] = Key_E4;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(channel1[1].length);
+    CheckPreviousNoteLength(channel1[1].length);
 }
 
 // Not possible to change song index when running during normal use,
@@ -193,14 +193,14 @@ TEST(MusicManager, ShouldStartAnotherSongAtBeginningWhenSongChanges) {
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(0);
+    CheckPreviousNoteLength(0);
 
     ChangeSoundDetectedSignal();
 
     expected[Finger_Right1] = Key_F4;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(channel2[0].length);
+    CheckPreviousNoteLength(channel2[0].length);
 }
 
 TEST(MusicManager, ShouldResetSongProgressWhenStopping) {
@@ -219,7 +219,7 @@ TEST(MusicManager, ShouldResetSongProgressWhenStopping) {
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(0);
+    CheckPreviousNoteLength(0);
 }
 
 TEST(MusicManager, ShouldRequestConcurrentNotes) {
@@ -237,7 +237,7 @@ TEST(MusicManager, ShouldRequestConcurrentNotes) {
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(0);
+    CheckPreviousNoteLength(0);
 
     ChangeSoundDetectedSignal();
 
@@ -245,7 +245,7 @@ TEST(MusicManager, ShouldRequestConcurrentNotes) {
     expected[Finger_Right5] = Key_F5;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(channel2[0].length);
+    CheckPreviousNoteLength(channel2[0].length);
 }
 
 TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnSoundDetected) { // for music with syncopation
@@ -263,7 +263,7 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnSoundDetected) { // f
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(0);
+    CheckPreviousNoteLength(0);
 
     ChangeSoundDetectedSignal();
 
@@ -271,7 +271,7 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnSoundDetected) { // f
     expected[Finger_Right5] = Key_Rest;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(channel4[0].length);
+    CheckPreviousNoteLength(channel4[0].length);
 
     ChangeSoundDetectedSignal();
 
@@ -279,7 +279,7 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnSoundDetected) { // f
     expected[Finger_Right5] = Key_F5;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(channel4[1].length);
+    CheckPreviousNoteLength(channel4[1].length);
 }
 
 // same as previous test case, except uses note forward signal instead of sound detected
@@ -298,7 +298,7 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnNoteForward) { // for
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    // CheckCurrentNoteLength(0); // don't care because it is only used on sound detected
+    // CheckPreviousNoteLength(0); // don't care because it is only used on sound detected
 
     ChangeNoteForwardSignal();
 
@@ -306,7 +306,7 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnNoteForward) { // for
     expected[Finger_Right5] = Key_Rest;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    // CheckCurrentNoteLength(channel4[0].length);
+    // CheckPreviousNoteLength(channel4[0].length);
 
     ChangeNoteForwardSignal();
 
@@ -314,7 +314,7 @@ TEST(MusicManager, ShouldAdvanceToClosestNoteInAnyChannelOnNoteForward) { // for
     expected[Finger_Right5] = Key_F5;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    // CheckCurrentNoteLength(channel4[1].length);
+    // CheckPreviousNoteLength(channel4[1].length);
 }
 
 TEST(MusicManager, ShouldGoBackToClosestNoteInAnyChannelOnNoteBackward) { // for music with syncopation
@@ -340,7 +340,7 @@ TEST(MusicManager, ShouldGoBackToClosestNoteInAnyChannelOnNoteBackward) { // for
     CheckDesiredFingerPositions(expected, actual);
     // don't care because it is only used on sound detected
     // the actual value would is currently wrong if we cared
-    // CheckCurrentNoteLength(channel4[0].length);
+    // CheckPreviousNoteLength(channel4[0].length);
 
     ChangeNoteBackwardSignal();
 
@@ -348,7 +348,7 @@ TEST(MusicManager, ShouldGoBackToClosestNoteInAnyChannelOnNoteBackward) { // for
     expected[Finger_Right5] = Key_D5;
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    // CheckCurrentNoteLength(0);
+    // CheckPreviousNoteLength(0);
 }
 
 TEST(MusicManager, ShouldRequestRestWhenEndOfChannelIsReached) {
@@ -367,7 +367,7 @@ TEST(MusicManager, ShouldRequestRestWhenEndOfChannelIsReached) {
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
     CheckDesiredFingerPositions(expected, actual);
-    CheckCurrentNoteLength(channel6[0].length);
+    CheckPreviousNoteLength(channel6[0].length);
 }
 
 TEST(MusicManager, ShouldRequestRestWhenEndOfSongIsReached) {

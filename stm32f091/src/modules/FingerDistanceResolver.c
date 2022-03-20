@@ -13,6 +13,7 @@
 #define IGNORE(x) ((void)x)
 
 volatile static bool enableOutput = true;
+volatile static bool enableChanged = false;
 
 enum {
     ClockFrequency = 48000000,
@@ -109,7 +110,7 @@ void TIM17_IRQHandler(void) {
 
     if (!enableOutput) {
         enableOutput = true;
-        ResolveFingerDistances(NULL, NULL);
+        enableChanged = true;
     }
 }
 
@@ -125,6 +126,13 @@ static void Timer17_Init(uint32_t ARR) {
     // enable the timer once
     // because the first time the timer is enabled, it instantly calls its ISR
     TIM17->CR1 |= TIM_CR1_CEN;
+}
+
+void FingerDistanceResolver_Run(void) {
+    if (enableChanged) {
+        enableChanged = false;
+        ResolveFingerDistances(NULL, NULL);
+    }
 }
 
 void FingerDistanceResolver_Init(void) {

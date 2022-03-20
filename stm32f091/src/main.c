@@ -36,6 +36,7 @@ int main(void) {
         DebugHelper_Run();
         Ble_Run();
         ButtonInterface_Run();
+        FingerDistanceResolver_Run();
         i++;
     }
 }

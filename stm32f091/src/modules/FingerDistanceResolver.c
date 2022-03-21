@@ -70,25 +70,35 @@ static void SoundDetected(void *context, const void *data) {
         // stop timer before changing its config, and so that the ISR cannot be called in the middle of this function
         TIM17->CR1 &= ~TIM_CR1_CEN;
 
-        // temporarily disable motors
-        // depending on the subscription order, when a sound is detected,
-        // music manager may cause the resolved distances to change first,
-        // and then the resolved distances are set to rests here
-        enableOutput = false;
-        ResolveFingerDistances(NULL, NULL);
-
-        uint8_t tempo = 0;
-        GlobalVariables_Read(Global_Tempo, &tempo);
         uint8_t noteLength = 0;
         GlobalVariables_Read(Global_PreviousNoteLength, &noteLength);
-        // fastest note supported is 64th note, which is 1/16 the duration of a quarter note
-        // that is the duration of one "tick"
-        // tempo is in beats per minute, which is number of quarter notes per minute
-        // tempo / 60 * 16 is ticks per second
-        // tempo / 60 * 16 / noteLength is (noteLength ticks) per second
-        // doing multiplication before most of the division to get more resolution out of integer division
-        TIM17->ARR = ClockFrequency / Prescaler * 60 * noteLength / tempo / 16 - 1;
-        TIM17->CR1 |= TIM_CR1_CEN;
+        if (noteLength == 0) {
+            // should not hit this case, only here to make sure ARR is not set to -1
+            // unless this function is called before tempo is updated to match the next note
+            // because noteLength is only 0 before any note has been played
+            enableOutput = true;
+            ResolveFingerDistances(NULL, NULL);
+        }
+        else {
+            // temporarily disable motors
+            // depending on the subscription order, when a sound is detected,
+            // music manager may cause the resolved distances to change first,
+            // and then the resolved distances are set to rests here
+            enableOutput = false;
+            ResolveFingerDistances(NULL, NULL);
+
+            uint8_t tempo = 0;
+            GlobalVariables_Read(Global_Tempo, &tempo);
+
+            // fastest note supported is 64th note, which is 1/16 the duration of a quarter note
+            // that is the duration of one "tick"
+            // tempo is in beats per minute, which is number of quarter notes per minute
+            // tempo / 60 * 16 is ticks per second
+            // tempo / 60 * 16 / noteLength is (noteLength ticks) per second
+            // doing multiplication before most of the division to get more resolution out of integer division
+            TIM17->ARR = ClockFrequency / Prescaler * 60 * noteLength / tempo / 16 - 1;
+            TIM17->CR1 |= TIM_CR1_CEN;
+        }
     }
 }
 

@@ -30,11 +30,12 @@ upperXLimitH = 1300
 xTolerance = .025*camX
 upperYLimit = .5*camY
 maxDeltaY = 250
-tapeBoxAreaL = 120
-tapeBoxAreaH = 325
+tapeBoxAreaL = 80
+tapeBoxAreaH = 400
 blackKeyMinArea = 300
 
 # Establish a BLE pairing with the MCU
+BLEVar = 0
 def establishBLE():
     # Connection attempt loop
     loopVar = True
@@ -43,11 +44,13 @@ def establishBLE():
         print("Attempt at Connection " + str(atm))
         try:
             # btle.Peripheral throws btle.BTLEDisconnectError if pairing unsuccessful
-            dev = btle.Peripheral("62:00:A1:21:6E:67")
+            dev = btle.Peripheral("62:00:A1:21:64:BB")
             passthroughUuid = btle.UUID("0000ffe0-0000-1000-8000-00805f9b34fb")
             passthroughService = dev.getServiceByUUID(passthroughUuid)
             writeUuid = btle.UUID("0000ffe9-0000-1000-8000-00805f9b34fb")
             writeCharacteristic = passthroughService.getCharacteristics(writeUuid)[0]
+            global BLEVar
+            BLEVar = writeCharacteristic
             GPIO.output(18, 1) # Pin 18 (Blue LED) on
             print("Pairing Successful")
             loopVar = False
@@ -114,6 +117,7 @@ def tapeCalibration(img):
         
         # Showing the output, debugging purposes
         cv2.imshow("Calibration Output", output)
+        print(len(contours))
         
         # Determining which contours correspond to the tape
         # Algorithm for Tape Detection v2:
@@ -212,11 +216,11 @@ def tapeCalibration(img):
 # expected, the keyContours structure will have 88 entries.
 def expectedKeyGeneration(cap):
     keyContours = []
-    #success, img = cap.read()
-    #for _ in range(10):
-    #    success, img = cap.read()
-    img = np.load("sampleImg.npy")
-    cv2.imshow("Sample Image", img)
+    success, img = cap.read()
+    for _ in range(10):
+        success, img = cap.read()
+    #img = np.load("sampleImg.npy")
+    cv2.imshow("Calibration Image", img)
     
     # Tape Calibration
     tapeContours = tapeCalibration(img)
@@ -344,18 +348,18 @@ def expectedKeyGeneration(cap):
         perimeter = [np.array([upperLeft, upperRight, lowerRight, p1, p2, p3, p4, p5, lowerLeft], dtype=np.int32)]
         
         # Brightness Adjustment of Sample Image, debugging
-        for row in img:
-            for col in row:
-                col[1] = col[1] - 70
+        #for row in img:
+        #    for col in row:
+        #        col[1] = col[1] - 70
 
         perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3)
         # Showing the output, debugging purposes
         cv2.imshow("Perimeter Output", perimOutput)
 
         # Brightness Adjustment of Sample Image, debugging
-        for row in img:
-            for col in row:
-                col[1] = col[1] + 70
+        #for row in img:
+        #    for col in row:
+        #        col[1] = col[1] + 70
 
         # White keys (based on sample image):
         # Key 1: x: 1183-1202 (19)
@@ -501,9 +505,9 @@ def expectedKeyGeneration(cap):
                 whiteKeys.append(np.array([topWhiteKeyCoordinates[k], topWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k]], dtype=np.int32))
 
             # Brightness Adjustment of Sample Image
-            for row in img:
-                for col in row:
-                    col[1] = col[1] - 70
+            #for row in img:
+            #    for col in row:
+            #        col[1] = col[1] - 70
 
             whiteKeyOutput = cv2.drawContours(img, whiteKeys, -1, (0, 0, 255), 3)
             # Showing the output, debugging purposes
@@ -793,13 +797,15 @@ class handDetector():
 # Interrupt function, transmits the data in currentlmLocations to the MCU at ~10 Hz
 def BleTransmit(currentlmLocations):
     toTransmit = ''
+    print(currentlmLocations)
     for lm in currentlmLocations:
         toTransmit += chr(lm)
-        #try:
-        #    writeCharacteristic.write(toTransmit)
-        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        #    GPIO.output(18, 0)
-        #    establishBLE()        
+    toTransmit = bytes(toTransmit, "utf-8")
+    #try:
+    #    BLEVar.write(toTransmit)
+    #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+    #    GPIO.output(18, 0)
+    #    establishBLE()
 
 # Called upon to transmit an error packet in the event of a calibration error
 def BleTransmitError(code):
@@ -807,7 +813,7 @@ def BleTransmitError(code):
     if(code == 0):
         print("error 0")
         #try:
-        #    writeCharacteristic.write(bytes("error code 0"))
+        #    BLEVar.write(bytes("error code 0", "utf-8"))
         #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         #    GPIO.output(18, 0)
         #    establishBLE()
@@ -815,7 +821,7 @@ def BleTransmitError(code):
     elif(code == 1):
         print("error 1")
         #try:
-        #    writeCharacteristic.write(bytes("error code 1"))
+        #    BLEVar.write(bytes("error code 1", "utf-8"))
         #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         #    GPIO.output(18, 0)
         #    establishBLE()
@@ -823,7 +829,7 @@ def BleTransmitError(code):
     elif(code == 2):
         print("error 2")
         #try:
-        #    writeCharacteristic.write(bytes("error code 2"))
+        #    BLEVar.write(bytes("error code 2", "utf-8"))
         #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         #    GPIO.output(18, 0)
         #    establishBLE()
@@ -831,7 +837,7 @@ def BleTransmitError(code):
     elif(code == 3):
         print("error 3")
         #try:
-        #    writeCharacteristic.write(bytes("error code 3"))
+        #    BLEVar.write(bytes("error code 3", "utf-8"))
         #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         #    GPIO.output(18, 0)
         #    establishBLE()
@@ -839,7 +845,7 @@ def BleTransmitError(code):
     elif(code == 4):
         print("error 4")
         #try:
-        #    writeCharacteristic.write(bytes("error code 4"))
+        #    BLEVar.write(bytes("error code 4", "utf-8"))
         #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         #    GPIO.output(18, 0)
         #    establishBLE()
@@ -847,7 +853,7 @@ def BleTransmitError(code):
     elif(code == 5):
         print("error 5")
         #try:
-        #    writeCharacteristic.write(bytes("error code 5"))
+        #    BLEVar.write(bytes("error code 5", "utf-8"))
         #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         #    GPIO.output(18, 0)
         #    establishBLE()
@@ -855,7 +861,7 @@ def BleTransmitError(code):
     elif(code == 6):
         print("error 6")
         #try:
-        #    writeCharacteristic.write(bytes("error code 6"))
+        #    BLEVar.write(bytes("error code 6", "utf-8"))
         #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         #    GPIO.output(18, 0)
         #    establishBLE()
@@ -863,7 +869,7 @@ def BleTransmitError(code):
     elif(code == 7):
         print("error 7")
         #try:
-        #    writeCharacteristic.write(bytes("error code 7"))
+        #    BLEVar.write(bytes("error code 7", "utf-8"))
         #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         #    GPIO.output(18, 0)
         #    establishBLE()

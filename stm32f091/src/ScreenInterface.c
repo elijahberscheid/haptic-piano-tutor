@@ -138,10 +138,15 @@ static const char *modeStringTable[] = {
     "Both Hands"
 };
 
+static const char *errorStringTable[] = {
+    "Error 0",
+    "Error 1",
+    "Error 2"
+};
+
 static void UpdateState(SystemState_t state, uint16_t color) {
     LCD_DrawFillRectangle(0, StateY, lcddev.width -1, StateY + CharacterHeight, WHITE);
-    LCD_DrawString((state == SystemState_CalibrationError)? CalibrationErrorStateX : StateX,
-            StateY, color, WHITE, stateStringTable[state], CharacterHeight, 0);
+    LCD_DrawString(StateX, StateY, color, WHITE, stateStringTable[state], CharacterHeight, 0);
 }
 
 static void UpdateSongName(uint8_t songIndex) {
@@ -154,13 +159,23 @@ static void UpdateSongName(uint8_t songIndex) {
 
 static void UpdateExpectedNotes(uint8_t *notes, uint16_t color) {
     LCD_DrawFillRectangle(0, ExpectedNotesY, lcddev.width -1, ExpectedNotesY + CharacterHeight, WHITE);
+    LCD_DrawFillRectangle(0, ExpectedNoteNamesY, lcddev.width -1, ExpectedNoteNamesY + CharacterHeight, WHITE);
+
     LCD_DrawString(DefaultX, ExpectedNotesY, color, WHITE, "Expected Notes:", 16, 0);
     uint16_t xpos = DefaultX;
+    uint8_t invalidNoteCount = 0;
     for (uint8_t i = 0; i < DistanceArrayLength; i++) {
         if (notes[i] < Key_Invalid) {
             LCD_DrawString(xpos, ExpectedNoteNamesY, color, WHITE, keyToStringTable[notes[i]], 16, 0);
             xpos += (strlen(keyToStringTable[notes[i]]) + 1) * CharacterWidth;
         }
+        else {
+            invalidNoteCount++;
+        }
+    }
+    if (invalidNoteCount == DistanceArrayLength) {
+            LCD_DrawFillRectangle(0, ExpectedNotesY, lcddev.width -1, ExpectedNotesY + CharacterHeight, WHITE);
+            LCD_DrawString(DefaultX, ExpectedNotesY, color, WHITE, "End of Song", 16, 0);
     }
 }
 
@@ -178,12 +193,22 @@ static void UpdateTempo(uint8_t tempo, uint16_t color) {
     LCD_DrawString(DefaultX + strlen("Tempo (bpm): ") * CharacterWidth, TempoY, color, WHITE, tempoBuffer, CharacterHeight, 0);
 }
 
+static void DisplayError(uint8_t errorCode) {
+    LCD_Clear(WHITE);
+    LCD_DrawString(DefaultX, StateY, RED, WHITE, "Error:", CharacterHeight, 0);
+    if (errorCode < sizeof(errorStringTable) / sizeof(errorStringTable[0])) {
+        LCD_DrawString(DefaultX, SongNameY, RED, WHITE, errorStringTable[errorCode], CharacterHeight, 0);
+    }
+}
+
 static void SystemStateChanged(void *context, const void *data) {
     IGNORE(context);
     SystemState_t *state = (SystemState_t *) data;
 
     switch (*state) {
         case SystemState_Idle: {
+            LCD_Clear(WHITE);
+
             UpdateState(*state, WHITE);
 
             uint8_t songIndex = 0;
@@ -228,7 +253,9 @@ static void SystemStateChanged(void *context, const void *data) {
             break;
         }
         case SystemState_CalibrationError: {
-            UpdateState(*state, RED);
+            uint8_t errorCode = 0;
+            GlobalVariables_Read(Global_ErrorCode, &errorCode);
+            DisplayError(errorCode);
             break;
         }
         default:
@@ -278,6 +305,17 @@ static void HandedModeChanged(void *context, const void *data) {
     uint8_t *mode = (uint8_t *) data;
 
     UpdateHandedMode(*mode, BLACK);
+}
+
+static void ErrorCodeChanged(void *context, const void *data) {
+    IGNORE(context);
+    uint8_t *errorCode = (uint8_t *) data;
+
+    SystemState_t state = 0;
+    GlobalVariables_Read(Global_SystemState, &state);
+    if (state == SystemState_CalibrationError) {
+        DisplayError(*errorCode);
+    }
 }
 
 static void SPI1_Init(void) {
@@ -348,6 +386,9 @@ void ScreenInterface_Init(void) {
 
     const GlobalVariables_Subscription_t modeSubscription = { .context = NULL, .callback = HandedModeChanged };
     GlobalVariables_Subscribe(Global_HandedMode, &modeSubscription);
+
+    const GlobalVariables_Subscription_t errorCodeSubscription = { .context = NULL, .callback = ErrorCodeChanged };
+    GlobalVariables_Subscribe(Global_ErrorCode, &errorCodeSubscription);
 
     SystemState_t state = 0;
     GlobalVariables_Read(Global_SystemState, &state);

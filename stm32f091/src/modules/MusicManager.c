@@ -8,7 +8,8 @@
 
 enum {
     NoteIndexNotFound = UINT32_MAX,
-    TickNumberNotFound = UINT32_MAX
+    TickNumberNotFound = UINT32_MAX,
+    DistanceArrayLength = 10
 };
 
 // Returns TickNumberNotFound if the next note is invalid (i.e. there is no next note)
@@ -102,18 +103,26 @@ static void UpdateDesiredFingerPositions(MusicManager_t *instance) {
     };
     NoteLength_t shortestNoteLength = UINT8_MAX;
 
-    for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
-        if (song->channels[channelIndex] != NULL) {
-            uint32_t noteIndex = FindCurrentNoteIndex(instance, song->channels[channelIndex]);
-            if (noteIndex != NoteIndexNotFound) {
-                Finger_t finger = song->channels[channelIndex][noteIndex].finger;
-                positions[finger] = song->channels[channelIndex][noteIndex].key;
-                NoteLength_t length = song->channels[channelIndex][noteIndex].length;
-                if (length < shortestNoteLength) {
-                    shortestNoteLength = length;
+    if (instance->ticks == UINT32_MAX) { // end of song reached
+        for (uint8_t finger = 0; finger < DistanceArrayLength; finger++) {
+            positions[finger] = Key_Invalid;
+        }
+        shortestNoteLength = 0;
+    }
+    else {
+        for (uint8_t channelIndex = 0; channelIndex < Song_MaxConcurrentNotes; channelIndex++) {
+            if (song->channels[channelIndex] != NULL) {
+                uint32_t noteIndex = FindCurrentNoteIndex(instance, song->channels[channelIndex]);
+                if (noteIndex != NoteIndexNotFound) {
+                    Finger_t finger = song->channels[channelIndex][noteIndex].finger;
+                    positions[finger] = song->channels[channelIndex][noteIndex].key;
+                    NoteLength_t length = song->channels[channelIndex][noteIndex].length;
+                    if (length < shortestNoteLength) {
+                        shortestNoteLength = length;
+                    }
                 }
-            }
 
+            }
         }
     }
 

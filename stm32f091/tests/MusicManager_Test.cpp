@@ -370,7 +370,7 @@ TEST(MusicManager, ShouldRequestRestWhenEndOfChannelIsReached) {
     CheckPreviousNoteLength(channel6[0].length);
 }
 
-TEST(MusicManager, ShouldRequestRestWhenEndOfSongIsReached) {
+TEST(MusicManager, ShouldRequestInvalidWhenEndOfSongIsReached) {
     uint8_t index = 4;
     GlobalVariables_Write(Global_SongIndex, &index);
     SystemState_t state = SystemState_Running;
@@ -380,8 +380,8 @@ TEST(MusicManager, ShouldRequestRestWhenEndOfSongIsReached) {
     ChangeSoundDetectedSignal();
 
     Key_t expected[] = {
-        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
-        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid,
+        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid
     };
     Key_t actual[10] = { 0 };
     GlobalVariables_Read(Global_DesiredFingerPositions, actual);
@@ -392,3 +392,23 @@ TEST(MusicManager, ShouldRequestRestWhenEndOfSongIsReached) {
     CheckDesiredFingerPositions(expected, actual);
 }
 
+TEST(MusicManager, ShouldRequestLastNoteWhenRewindingFromEndofSong) {
+    uint8_t index = 4;
+    GlobalVariables_Write(Global_SongIndex, &index);
+    SystemState_t state = SystemState_Running;
+    GlobalVariables_Write(Global_SystemState, &state);
+
+    ChangeSoundDetectedSignal();
+    ChangeSoundDetectedSignal();
+    ChangeNoteBackwardSignal();
+
+    Key_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    expected[Finger_Right4] = Key_C5;
+    Key_t actual[10] = { 0 };
+    GlobalVariables_Read(Global_DesiredFingerPositions, actual);
+    CheckDesiredFingerPositions(expected, actual);
+    // note length does not matter, because it only matters on sound detected
+}

@@ -1,6 +1,7 @@
 #include "stm32f0xx.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "InputInterfaces.h"
 #include "modules/GlobalVariables.h"
@@ -207,11 +208,19 @@ void Ble_SendString(char *message, uint8_t length) {
 void Ble_Run(void) {
     if (instance.doneReceiving) {
         instance.doneReceiving = false;
-        GlobalVariables_Write(Global_FingerPositions, &instance.rxBuffer);
-        // TODO: remove printing because it's for development only
-        if (instance.rxBuffer[0] > 31) { // if the first character is printable, print the whole buffer
-            printf("Received from BLE: %s\n", instance.rxBuffer);
+        if (strncmp("error code", instance.rxBuffer, strlen("error code")) == 0) {
+            uint8_t errorCode = strtol(instance.rxBuffer + strlen("error code"), NULL, 10);
+            GlobalVariables_Write(Global_ErrorCode, &errorCode);
+            bool error = true;
+            GlobalVariables_Write(Global_CalibrationError, &error);
         }
+        else {
+            GlobalVariables_Write(Global_FingerPositions, &instance.rxBuffer);
+        }
+        // TODO: remove printing because it's for development only
+//        if (instance.rxBuffer[0] > 31) { // if the first character is printable, print the whole buffer
+//            printf("Received from BLE: %s\n", instance.rxBuffer);
+//        }
     }
 }
 

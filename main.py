@@ -8,6 +8,7 @@ import cv2
 # References: https://github.com/jiuqiant/mediapipe_python_aarch64
 import mediapipe as mp
 import time
+import bisect
 import threading
 import numpy as np
 # Prerequisites: sudo apt-get install libglib2.0-dev; sudo pip install bluepy
@@ -27,9 +28,11 @@ lowerXLimit = 200
 upperXLimitL = 1100
 upperXLimitH = 1300
 xTolerance = .025*camX
+upperYLimit = .5*camY
 maxDeltaY = 250
 tapeBoxAreaL = 120
 tapeBoxAreaH = 325
+blackKeyMinArea = 300
 
 # Establish a BLE pairing with the MCU
 def establishBLE():
@@ -86,7 +89,7 @@ def tapeCalibration(img):
         lower_bound = np.array([60, 115, 60])   
         upper_bound = np.array([100, 255, 255])
         
-        # Values for 477 Lab Testing
+        # Values for Sample Image (ECE 477 Lab Setting)
         #lower_bound = np.array([60, 115, 60])   
         #upper_bound = np.array([100, 255, 255])    
         
@@ -130,67 +133,75 @@ def tapeCalibration(img):
                 BleTransmitError(2)
                 print("***Error Occured*** tapeCalibration Tape Detection Error Type 2") # Landmarks not in expected x range
             else:
-                sampleAreas = []
-                # Filtering based on contour area
-                for sample in sampleContour:
-                    samArea = cv2.contourArea(sample)
-                    if(samArea < tapeBoxAreaH and samArea > tapeBoxAreaL):
-                        sampleAreas.append(sample)
-                if(len(sampleAreas) < 4):
-                    BleTransmitError(3)
-                    print("***Error Occured*** tapeCalibration Tape Detection Error Type 3") # USB Camera too close or far
+                # Added 3/22/22: Filtering based on Y pixel location
+                yCheck = []
+                for ychSample in sampleContour:
+                    sampleY = ychSample[0][0][1]
+                    if(sampleY < upperYLimit):
+                        yCheck.append(ychSample)
+                if(len(yCheck) < 4):
+                    BleTransmitError(6)
+                    print("***Error Occured*** tapeCalibration Tape Detection Error Type 2.1") # Landmarks not in expected y range
                 else:
-                    sampleSimilar = []
-                    # Filtering based on similar x location (must have another contour present with similar location)
-                    for refined in sampleAreas:
-                        sampleX = refined[0][0][0]
-                        for refined2 in sampleAreas:
-                            sample2X = refined2[0][0][0]
-                            difX = abs(sampleX - sample2X)
-                            if(difX < xTolerance and refined[0][0][1] != refined2[0][0][1]):
-                                sampleSimilar.append(refined)
-                                sampleSimilar.append(refined2)
-                                sampleAreas.remove(refined)
-                                sampleAreas.remove(refined2)
-                                break
-                    if(len(sampleSimilar) < 4):
-                        BleTransmitError(4)
-                        print("***Error Occured*** tapeCalibration Tape Detection Error Type 4") # Keyboard or camera lense needs straightening 
+                    sampleAreas = []
+                    # Filtering based on contour area
+                    for sample in yCheck:
+                        samArea = cv2.contourArea(sample)
+                        if(samArea < tapeBoxAreaH and samArea > tapeBoxAreaL):
+                            sampleAreas.append(sample)
+                    if(len(sampleAreas) < 4):
+                        BleTransmitError(3)
+                        print("***Error Occured*** tapeCalibration Tape Detection Error Type 3") # USB Camera too close or far
                     else:
-                        sampleSimilarY = []
-                        # Filtering based on similar y location (must have another contour present with similar location)
-                        yTolerance = xTolerance
-                        for superRefined in sampleSimilar:
-                             sampleY = superRefined[0][0][1]
-                             for superRefined2 in sampleSimilar:
-                                 sample2Y = superRefined[0][0][1]
-                                 difY = abs(sampleY - sample2Y)
-                                 if(difY < yTolerance and superRefined[0][0][0] != superRefined2[0][0][0]):
-                                     sampleSimilarY.append(superRefined)
-                                     sampleSimilarY.append(superRefined2)
-                                     sampleSimilar.remove(superRefined)
-                                     sampleSimilar.remove(superRefined2)
-                                     break
-                        if(len(sampleSimilarY) < 4):
+                        sampleSimilar = []
+                        # Filtering based on similar x location (must have another contour present with similar location)
+                        for refined in sampleAreas:
+                            sampleX = refined[0][0][0]
+                            for refined2 in sampleAreas:
+                                sample2X = refined2[0][0][0]
+                                difX = abs(sampleX - sample2X)
+                                if(difX < xTolerance and refined[0][0][1] != refined2[0][0][1]):
+                                    sampleSimilar.append(refined)
+                                    sampleSimilar.append(refined2)
+                                    sampleAreas.remove(refined)
+                                    sampleAreas.remove(refined2)
+                                    break
+                        if(len(sampleSimilar) < 4):
                             BleTransmitError(4)
-                            print("***Error Occured*** tapeCalibration Tape Detection Error Type 5") # Keyboard or camera lense needs straightening 
+                            print("***Error Occured*** tapeCalibration Tape Detection Error Type 4") # Keyboard or camera lense needs straightening 
                         else:
-                            # Final check, filtering based on maximum y seperation of landmarks
-                            global camY
-                            lowestY = camY + 1
-                            highestY = -1
-                            for refinedCubed in sampleSimilarY:
-                                sampleY = refined[0][0][1]
-                                if(sampleY < lowestY):
-                                    lowestY = sampleY
-                                if(sampleY > highestY):
-                                    highestY = sampleY
-                            print(str(highestY - lowestY))
-                            if(highestY - lowestY > maxDeltaY):
-                                BleTransmitError(3)
-                                print("***Error Occured*** tapeCalibration Tape Detection Error Type 6") # Camera is either too close or too far
-                            # If code reaches here, tape has been detected
-                            tapeContours = sampleSimilarY
+                            sampleSimilarY = []
+                            # Filtering based on similar y location (must have another contour present with similar location)
+                            yTolerance = xTolerance
+                            for superRefined in sampleSimilar:
+                                 sampleY = superRefined[0][0][1]
+                                 for superRefined2 in sampleSimilar:
+                                     sample2Y = superRefined[0][0][1]
+                                     difY = abs(sampleY - sample2Y)
+                                     if(difY < yTolerance and superRefined[0][0][0] != superRefined2[0][0][0]):
+                                         sampleSimilarY.append(superRefined)
+                                         sampleSimilarY.append(superRefined2)
+                                         sampleSimilar.remove(superRefined)
+                                         sampleSimilar.remove(superRefined2)
+                                         break
+                            if(len(sampleSimilarY) < 4):
+                                BleTransmitError(4)
+                                print("***Error Occured*** tapeCalibration Tape Detection Error Type 5") # Keyboard or camera lense needs straightening 
+                            else:
+                                # Final check, filtering based on maximum y seperation of landmarks
+                                lowestY = camY + 1
+                                highestY = -1
+                                for refinedCubed in sampleSimilarY:
+                                    sampleY = refined[0][0][1]
+                                    if(sampleY < lowestY):
+                                        lowestY = sampleY
+                                    if(sampleY > highestY):
+                                        highestY = sampleY
+                                if(highestY - lowestY > maxDeltaY):
+                                    BleTransmitError(3)
+                                    print("***Error Occured*** tapeCalibration Tape Detection Error Type 6") # Camera is either too close or too far
+                                # If code reaches here, tape has been detected
+                                tapeContours = sampleSimilarY
     else:
         BleTrasmitError(0)
         print("***Error Occured*** expectedKeyGeneration USB Camera Error")
@@ -206,110 +217,500 @@ def expectedKeyGeneration(cap):
     #    success, img = cap.read()
     img = np.load("sampleImg.npy")
     cv2.imshow("Sample Image", img)
+    
+    # Tape Calibration
     tapeContours = tapeCalibration(img)
     
     if(len(tapeContours) != 4):
-        BleTransmitError(5)
-        print("***Error Occured*** expectedKeyGeneration Tape Detection Error Type 7") # Too much noise, remove other green objects
-    
-    # Extract the perimeter corners of the keyboard from the tape contours
-    # NOTE: keyboard is expected to be upside down in the USB camera feed
-    upperLeftTape = 0
-    upperRightTape = 0
-    lowerLeftTape = 0
-    lowerRightTape = 0
-    
-    xMidway = 0
-    yMidway = 0
-    for contour in tapeContours:
-        xMidway += contour[0][0][0]
-        yMidway += contour[0][0][1]
-    xMidway = xMidway/4
-    yMidway = yMidway/4
-    
-    for contour in tapeContours:
-        if(contour[0][0][0] < xMidway and contour[0][0][1] < yMidway):
-            lowerRightTape = contour
-        elif(contour[0][0][0] < xMidway and contour[0][0][1] > yMidway):
-            upperRightTape = contour
-        elif(contour[0][0][0] > xMidway and contour[0][0][1] < yMidway):
-            lowerLeftTape = contour
-        elif(contour[0][0][0] > xMidway and contour[0][0][1] > yMidway):
-            upperLeftTape = contour
-        else:
+        while(len(tapeContours) != 4):
             BleTransmitError(5)
-            print("***Error Occured*** expectedKeyGeneration Tape Detection Error Type 8") # Too much noise, remove other green objects
+            print("***Error Occured*** expectedKeyGeneration Tape Detection Error Type 7") # Too much noise, remove other green objects
+            tapeContours = tapeCalibration(img)
+    else:
+        # Extract the perimeter corners of the keyboard from the tape contours
+        # NOTE: keyboard is expected to be upside down in the USB camera feed
+        upperLeftTape = 0
+        upperRightTape = 0
+        lowerLeftTape = 0
+        lowerRightTape = 0
     
-    # Define perimeter corner coordinates:
-    lowerLeftX = 0
-    lowerLeftY = 0
-    upperLeftX = 0
-    upperLeftY = 0
-    lowerRightX = 0
-    lowerRightY = 0
-    upperRightX = 0
-    upperRightY = 0
+        xMidway = 0
+        yMidway = 0
+        for contour in tapeContours:
+            xMidway += contour[0][0][0]
+            yMidway += contour[0][0][1]
+        xMidway = xMidway/4
+        yMidway = yMidway/4
     
-    for coordinate in lowerLeftTape:
-        rcoordinate = coordinate[0]
-        if(lowerLeftX == 0):
-            lowerLeftX = rcoordinate[0]
-        if(lowerLeftY == 0):
-            lowerLeftY = rcoordinate[1]
-        if(rcoordinate[0] < lowerLeftX):
-            lowerLeftX = rcoordinate[0]
-        if(rcoordinate[1] > lowerLeftY):
-            lowerLeftY = rcoordinate[1]
+        for contour in tapeContours:
+            if(contour[0][0][0] < xMidway and contour[0][0][1] < yMidway):
+                lowerRightTape = contour
+            elif(contour[0][0][0] < xMidway and contour[0][0][1] > yMidway):
+                upperRightTape = contour
+            elif(contour[0][0][0] > xMidway and contour[0][0][1] < yMidway):
+                lowerLeftTape = contour
+            elif(contour[0][0][0] > xMidway and contour[0][0][1] > yMidway):
+                upperLeftTape = contour
     
-    for coordinate in upperLeftTape:
-        rcoordinate = coordinate[0]
-        if(upperLeftX == 0):
-            upperLeftX = rcoordinate[0]
-        if(upperLeftY == 0):
-            upperLeftY = rcoordinate[1]
-        if(rcoordinate[0] < upperLeftX):
-            upperLeftX = rcoordinate[0]
-        if(rcoordinate[1] < upperLeftY):
-            upperLeftY = rcoordinate[1]
+        # Define perimeter corner coordinates:
+        lowerLeftX = 0
+        lowerLeftY = 0
+        upperLeftX = 0
+        upperLeftY = 0
+        lowerRightX = 0
+        lowerRightY = 0
+        upperRightX = 0
+        upperRightY = 0
+    
+        for coordinate in lowerLeftTape:
+            rcoordinate = coordinate[0]
+            if(lowerLeftX == 0):
+                lowerLeftX = rcoordinate[0]
+            if(lowerLeftY == 0):
+                lowerLeftY = rcoordinate[1]
+            if(rcoordinate[0] < lowerLeftX):
+                lowerLeftX = rcoordinate[0]
+            if(rcoordinate[1] > lowerLeftY):
+                lowerLeftY = rcoordinate[1]
+    
+        for coordinate in upperLeftTape:
+            rcoordinate = coordinate[0]
+            if(upperLeftX == 0):
+                upperLeftX = rcoordinate[0]
+            if(upperLeftY == 0):
+                upperLeftY = rcoordinate[1]
+            if(rcoordinate[0] < upperLeftX):
+                upperLeftX = rcoordinate[0]
+            if(rcoordinate[1] < upperLeftY):
+                upperLeftY = rcoordinate[1]
             
-    for coordinate in lowerRightTape:
-        rcoordinate = coordinate[0]
-        if(lowerRightX == 0):
-            lowerRightX = rcoordinate[0]
-        if(lowerRightY == 0):
-            lowerRightY = rcoordinate[1]
-        if(rcoordinate[0] > lowerRightX):
-            lowerRightX = rcoordinate[0]
-        if(rcoordinate[1] > lowerRightY):
-            lowerRightY = rcoordinate[1]
+        for coordinate in lowerRightTape:
+            rcoordinate = coordinate[0]
+            if(lowerRightX == 0):
+                lowerRightX = rcoordinate[0]
+            if(lowerRightY == 0):
+                lowerRightY = rcoordinate[1]
+            if(rcoordinate[0] > lowerRightX):
+                lowerRightX = rcoordinate[0]
+            if(rcoordinate[1] > lowerRightY):
+                lowerRightY = rcoordinate[1]
 
-    for coordinate in upperRightTape:
-        rcoordinate = coordinate[0]
-        if(upperRightX == 0):
-            upperRightX = rcoordinate[0]
-        if(upperRightY == 0):
-            upperRightY = rcoordinate[1]
-        if(rcoordinate[0] > upperRightX):
-            upperRightX = rcoordinate[0]
-        if(rcoordinate[1] < upperRightY):
-            upperRightY = rcoordinate[1]
+        for coordinate in upperRightTape:
+            rcoordinate = coordinate[0]
+            if(upperRightX == 0):
+                upperRightX = rcoordinate[0]
+            if(upperRightY == 0):
+                upperRightY = rcoordinate[1]
+            if(rcoordinate[0] > upperRightX):
+                upperRightX = rcoordinate[0]
+            if(rcoordinate[1] < upperRightY):
+                upperRightY = rcoordinate[1]
             
-    print("KEYBOARD CORNER POINTS")
-    print("x: " + str(upperLeftX))
-    print("y: " + str(upperLeftY))
-    print("x: " + str(lowerLeftX))
-    print("y: " + str(lowerLeftY))
-    print("x: " + str(lowerRightX))
-    print("y: " + str(lowerRightY))
-    print("x: " + str(upperRightX))
-    print("y: " + str(upperRightY))
+        print("KEYBOARD PERIMETER CORNER POINTS:")
+        print("True upperLeftX: x: " + str(upperLeftX))
+        print("True upperLeftY: y: " + str(upperLeftY))
+        print("True lowerLeftX: x: " + str(lowerLeftX))
+        print("True lowerLeftY: y: " + str(lowerLeftY))
+        print("True lowerRightX: x: " + str(lowerRightX))
+        print("True lowerRightY: y: " + str(lowerRightY))
+        print("True upperRightX: x: " + str(upperRightX))
+        print("True upperRightY: y: " + str(upperRightY))
+    
+        upperLeft = [upperLeftX, upperLeftY]
+        upperRight = [upperRightX, upperRightY]
+        lowerLeft = [lowerLeftX, lowerLeftY]
+        lowerRight = [lowerRightX, lowerRightY]
+    
+        xLength = lowerLeftX - lowerRightX
+        yLength = upperLeftY - lowerLeftY
+        xDiff = xLength / 6
+        xp1 = lowerRightX + xDiff # Roughly 22% y distortion
+        # (289.5, 121)
+        xp2 = lowerRightX + 2*xDiff # Roughly 33% y distortion
+        # (472, 106)
+        xp3 = lowerRightX + 3*xDiff # Roughly 37% y distortion 
+        # (654.5, 101) 
+        xp4 = lowerRightX + 4*xDiff # Roughtly 33% y distortion
+        # (837, 108) 
+        xp5 = lowerRightX + 5*xDiff # Roughly 22% y distortion
+        # (1019.5, 122)
 
-# Given the keyContours structure, detailing the expected piano key pixel locations, and
+        p1 = [xp1, lowerLeftY - yLength*0.22]
+        p2 = [xp2, lowerLeftY - yLength*0.33]
+        p3 = [xp3, lowerLeftY - yLength*0.37]
+        p4 = [xp4, lowerLeftY - yLength*0.33]
+        p5 = [xp5, lowerLeftY - yLength*0.22]
+  
+        perimeter = [np.array([upperLeft, upperRight, lowerRight, p1, p2, p3, p4, p5, lowerLeft], dtype=np.int32)]
+        
+        # Brightness Adjustment of Sample Image, debugging
+        for row in img:
+            for col in row:
+                col[1] = col[1] - 70
+
+        perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3)
+        # Showing the output, debugging purposes
+        cv2.imshow("Perimeter Output", perimOutput)
+
+        # Brightness Adjustment of Sample Image, debugging
+        for row in img:
+            for col in row:
+                col[1] = col[1] + 70
+
+        # White keys (based on sample image):
+        # Key 1: x: 1183-1202 (19)
+        # Key 3: x: 1168-1183 (15)
+        # Key 4: x: 1153-1168 (15)
+        # Key 6: x: 1137-1153 (16)
+        # Key 8: x: 1120-1137 (18)
+        # Key 9: x: 1102-1120 (18)
+        # Key 11: x: 1084-1102 (18)
+        # Key 13: x: 1066-1084 (18)
+        # Key 15: x: 1046-1066 (20)
+        # Key 16: x: 1026-1046 (20)
+        # Key 18: x: 1006-1026 (20)
+        # Key 20: x: 985-1006 (21)
+        # Key 21: x: 964-985 (21)
+        # Key 23: x: 942-964 (22)
+        # Key 25: x: 919-942 (23)
+        # Key 27: x: 896-919 (23)
+        # Key 28: x: 873-896 (23)
+        # Key 30: x: 848-873 (25)
+        # Key 32: x: 824-848 (24)
+        # Key 33: x: 800-824 (24)
+        # Key 35: x: 775-800 (25)
+        # Key 37: x: 749-775 (26)
+        # Key 39: x: 724-749 (25)
+        # Key 40: x: 699-724 (25)
+        # Key 42: x: 675-699 (24)
+        # Key 44: x: 649-675 (26)
+        # Key 45: x: 623-649 (26)
+        # Key 47: x: 598-623 (25)
+        # Key 49: x: 572-598 (27)
+        # Key 51: x: 547-572 (25)
+        # Key 52: x: 522-547 (25)
+        # Key 54: x: 497-522 (25)
+          
+        # Find Black Key Contours
+        # https://techvidvan.com/tutorials/detect-objects-of-similar-color-using-opencv-in-python/
+        # convert to hsv colorspace
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        
+        # lower bound and upper bound for Black color, assuming white background
+        lower_bound = np.array([0, 0, 0])   
+        upper_bound = np.array([185, 130, 225])
+        
+        # find the colors within the boundaries
+        mask = cv2.inRange(hsv, lower_bound, upper_bound)
+        
+        #define kernel size, 3x3 for low res black keys  
+        kernel = np.ones((3,3),np.uint8)
+        
+        # Remove unnecessary noise from mask
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        
+        # Segment only the detected region
+        segmented_img = cv2.bitwise_and(img, img, mask=mask)
+        
+        # Find contours from the mask
+        contours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # Determining if contours are within the perimeter of the keyboard, have sufficient area
+        blackKeys = []
+        for blackKey in contours:
+            sampPoint = (int(blackKey[0][0][0]), int(blackKey[0][0][1]))
+            inContour = cv2.pointPolygonTest(perimeter[0], sampPoint, False)
+            if(inContour >= 0):
+                if(cv2.contourArea(blackKey) > blackKeyMinArea):
+                    blackKeys.append(blackKey)
+        # Checking if correct number of key contours were found
+        if(len(blackKeys) != 36):
+            BleTransmitError(7)
+            print("***Error Occured*** Black Key Detection Error") # Black Key Detection Error
+            return [0],[0]
+        else:
+            # Normalizing array of black keys
+            normalizedBlackKeys = sorted(blackKeys, key=lambda x: x[0][0][0], reverse=True)
+
+            output = cv2.drawContours(segmented_img, normalizedBlackKeys, -1, (0, 0, 255), 3)
+        
+            # Showing the output, debugging purposes
+            cv2.imshow("Black Key Output", output)
+            
+            whiteKeyBoundaries = [0] * 51
+            blackKeyGivens = [0, 2, 3, 5, 6, 7, 9, 10, 12, 13, 14, 16, 17, 19, 20, 21, 23, 24, 26, 27, 28, 30, 31, 33, 34, 35, 37, 38, 40, 41, 42, 44, 45, 47, 48, 49]
+            
+            # Determining white key pixel boundaries based on black key contours
+            iterator = 0
+            for key in normalizedBlackKeys:
+                maxX = 0
+                minX = 0
+                for coord in key:
+                    if(maxX == 0):
+                        maxX = coord[0][0]
+                        minX = coord[0][0]
+                    if(coord[0][0] > maxX):
+                        maxX = coord[0][0]
+                    elif(coord[0][0] < minX):
+                        minX = coord[0][0]
+                xp = (maxX + minX)/2
+                whiteKeyIndex = blackKeyGivens[iterator]
+                whiteKeyBoundaries[whiteKeyIndex] = xp
+                iterator += 1
+            
+            # Determining remaining white key pixel boundaries by averaging known locations
+            iterator = 0
+            for bound in whiteKeyBoundaries:
+                if(iterator != 50 and bound == 0):
+                    whiteKeyBoundaries[iterator] = (whiteKeyBoundaries[iterator - 1] + whiteKeyBoundaries[iterator + 1])/2
+                iterator += 1
+            whiteKeyBoundaries[50] = (whiteKeyBoundaries[49] + lowerRightX)/2
+            
+            # Determining bottom points of white key contours
+            bottomWhiteKeyCoordinates = []
+            for i in range(0, 53):
+                if(i == 0):
+                    bottomWhiteKeyCoordinates.append([upperLeftX, upperRightY])
+                elif(i == 52):
+                    bottomWhiteKeyCoordinates.append([upperRightX, upperRightY])
+                else:
+                    bottomWhiteKeyCoordinates.append([whiteKeyBoundaries[i - 1], upperRightY])
+            
+            # Determining top points of white key contours
+            topWhiteKeyCoordinates = []
+            for j in range(0, 53):
+                if(j == 0):
+                    topWhiteKeyCoordinates.append([lowerLeftX, lowerRightY])
+                elif(j == 52):
+                    topWhiteKeyCoordinates.append([lowerRightX, lowerRightY])
+                else:
+                    baseline = int(lowerRightY) + 5
+                    while True:
+                        sampPoint = (int(whiteKeyBoundaries[j - 1]), baseline)
+                        inContour = cv2.pointPolygonTest(perimeter[0], sampPoint, False)
+                        if(inContour == 1):
+                            baseline = baseline - 1
+                        else:
+                            break
+                    topWhiteKeyCoordinates.append([whiteKeyBoundaries[j - 1], baseline])
+            
+            # Drawing white key contours
+            whiteKeys = []
+            for k in range(0, 52):
+                whiteKeys.append(np.array([topWhiteKeyCoordinates[k], topWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k]], dtype=np.int32))
+
+            # Brightness Adjustment of Sample Image
+            for row in img:
+                for col in row:
+                    col[1] = col[1] - 70
+
+            whiteKeyOutput = cv2.drawContours(img, whiteKeys, -1, (0, 0, 255), 3)
+            # Showing the output, debugging purposes
+            cv2.imshow("White Key Output", whiteKeyOutput)
+            
+            return whiteKeys, normalizedBlackKeys, whiteKeyBoundaries
+
+# lmDict structure, for converting hand and lm number to lmLocations entry
+lmDict = {
+    (1, 20): 0,
+    (1, 16): 1,
+    (1, 12): 2,
+    (1, 8): 3,
+    (1, 4): 4,
+    (2, 4): 5,
+    (2, 8): 6,
+    (2, 12): 7,
+    (2, 16): 8,
+    (2, 20): 9
+}
+
+# applicableBlack structure, converts pos in whiteKeyBoundaries to applicable black keys to be checked
+applicableBlack = {
+    51 : [0],
+    50 : [0],
+    49 : [1],
+    48 : [1, 2],
+    47 : [2],
+    46 : [3],
+    45 : [3, 4],
+    44 : [4, 5],
+    43 : [5],
+    42 : [6],
+    41 : [6, 7],
+    40 : [7],
+    39 : [8],
+    38 : [8, 9],
+    37 : [9, 10],
+    36 : [10],
+    35 : [11],
+    34 : [11, 12],
+    33 : [12],
+    32 : [13],
+    31 : [13, 14],
+    30 : [14, 15],
+    29 : [15],
+    28 : [16],
+    27 : [16, 17],
+    26 : [17],
+    25 : [18],
+    24 : [18, 19],
+    23 : [19, 20],
+    22 : [20],
+    21 : [21],
+    20 : [21, 22],
+    19 : [22],
+    18 : [23],
+    17 : [23, 24],
+    16 : [24, 25],
+    15 : [25],
+    14 : [26],
+    13 : [26, 27],
+    12 : [27],
+    11 : [28],
+    10 : [28, 29],
+    9 : [29, 30],
+    8 : [30],
+    7 : [31],
+    6 : [31, 32],
+    5 : [32],
+    4 : [33],
+    3 : [33, 34],
+    2 : [34, 35],
+    1 : [35]
+}
+
+# masterKey structure, converts a given white or black key to its absolute key number
+masterKey = {
+    (0, -1) : 0,
+    (1, -1) : 2,
+    (2, -1) : 3,
+    (3, -1) : 5,
+    (4, -1) : 7,
+    (5, -1) : 8,
+    (6, -1) : 10,
+    (7, -1) : 12,
+    (8, -1) : 14,
+    (9, -1) : 15,
+    (10, -1) : 17,
+    (11, -1) : 19,
+    (12, -1) : 20,
+    (13, -1) : 22,
+    (14, -1) : 24,
+    (15, -1) : 26,
+    (16, -1) : 27,
+    (17, -1) : 29,
+    (18, -1) : 31,
+    (19, -1) : 32,
+    (20, -1) : 34,
+    (21, -1) : 36,
+    (22, -1) : 38,
+    (23, -1) : 39,
+    (24, -1) : 41,
+    (25, -1) : 43,
+    (26, -1) : 44,
+    (27, -1) : 46,
+    (28, -1) : 48,
+    (29, -1) : 50,
+    (30, -1) : 51,
+    (31, -1) : 53,
+    (32, -1) : 55,
+    (33, -1) : 56,
+    (34, -1) : 58,
+    (35, -1) : 60,
+    (36, -1) : 62,
+    (37, -1) : 63,
+    (38, -1) : 65,
+    (39, -1) : 67,
+    (40, -1) : 68,
+    (41, -1) : 70,
+    (42, -1) : 72,
+    (43, -1) : 74,
+    (44, -1) : 75,
+    (45, -1) : 77,
+    (46, -1) : 79,
+    (47, -1) : 80,
+    (48, -1) : 82,
+    (49, -1) : 84,
+    (50, -1) : 86,
+    (51, -1) : 87,
+    (-1, 0) : 1,
+    (-1, 1) : 4,
+    (-1, 2) : 6,
+    (-1, 3) : 9,
+    (-1, 4) : 11,
+    (-1, 5) : 13,
+    (-1, 6) : 16,
+    (-1, 7) : 18,
+    (-1, 8) : 21,
+    (-1, 9) : 23,
+    (-1, 10) : 25,
+    (-1, 11) : 28,
+    (-1, 12) : 30,
+    (-1, 13) : 33,
+    (-1, 14) : 35,
+    (-1, 15) : 37,
+    (-1, 16) : 40,
+    (-1, 17) : 42,
+    (-1, 18) : 45,
+    (-1, 19) : 47,
+    (-1, 20) : 49,
+    (-1, 21) : 52,
+    (-1, 22) : 54,
+    (-1, 23) : 57,
+    (-1, 24) : 59,
+    (-1, 25) : 61,
+    (-1, 26) : 64,
+    (-1, 27) : 66,
+    (-1, 28) : 69,
+    (-1, 29) : 71,
+    (-1, 30) : 73,
+    (-1, 31) : 76,
+    (-1, 32) : 78,
+    (-1, 33) : 81,
+    (-1, 34) : 83,
+    (-1, 35) : 85
+}
+
+# Given the white and black structures, detailing the expected piano key pixel locations, and
 # the lmList structure, detailing the fingertip pixel locations of the user, this function
 # will return the lmLocations integer array, matching each finger to a piano key (denoted
 # 0 - 87) or 88 if the user's finger is not detected to be over a particular piano key.
-def matchLocations(keyContours, lmList):
+def matchLocations(white, black, whiteKeyBoundaries, lmList):
     lmLocations = [88, 88, 88, 88, 88, 88, 88, 88, 88, 88] # All landmark locations initalized to error code
+    if(len(lmList) > 0):
+        whiteKeyBoundaries = sorted(whiteKeyBoundaries, reverse=False)
+        for lm in lmList:
+            pos = bisect.bisect_left(whiteKeyBoundaries, lm[2])
+            sampPoint = (lm[2], lm[3])
+            if(pos == 0):
+                inContour = cv2.pointPolygonTest(white[51], sampPoint, False)
+                if(inContour >= 0):
+                    dictConv = (lm[0], lm[1])
+                    locationIndex = lmDict[dictConv]
+                    lmLocations[locationIndex] = 87
+            else:
+                blackToCheck = applicableBlack[pos]
+                isntBlack = True
+                for key in blackToCheck:
+                    inContour = cv2.pointPolygonTest(black[key], sampPoint, False)
+                    if(inContour >= 0):
+                        dictConv = (lm[0], lm[1])
+                        locationIndex = lmDict[dictConv]
+                        keyConv = (-1, key)
+                        keyNum = masterKey[keyConv]
+                        lmLocations[locationIndex] = keyNum
+                        isntBlack = False
+                        break
+                if(isntBlack):
+                    whiteIndex = 51 - pos
+                    inContour = cv2.pointPolygonTest(white[whiteIndex], sampPoint, False)
+                    if(inContour >= 0):
+                        dictConv = (lm[0], lm[1])
+                        locationIndex = lmDict[dictConv]
+                        keyConv = (whiteIndex, -1)
+                        keyNum = masterKey[keyConv]
+                        lmLocations[locationIndex] = keyNum
     return lmLocations
  
 
@@ -350,11 +751,11 @@ class handDetector():
             # If only one hand is detected
             if len(self.results.multi_hand_landmarks) == 1:
                 myHand = self.results.multi_hand_landmarks[0]
-                leftHand = True
+                leftHand = False
                 pinkyKnuckle = myHand.landmark[17]
                 pointerKnuckle = myHand.landmark[5]
                 if(pinkyKnuckle.x > pointerKnuckle.x):
-                    leftHand = False
+                    leftHand = True
                 for i in range(1, 6):
                     lm = myHand.landmark[i*4]
                     h, w, c = img.shape
@@ -389,12 +790,16 @@ class handDetector():
                         cv2.circle(img, (cx, cy), 3, (255, 0, 255), cv2.FILLED)
         return lmList 
 
-currentlmLocations = [88, 88, 88, 88, 88, 88, 88, 88, 88, 88] # All landmark locations set to error code
-
-# Interrupt function, transmits the data in currentlmLocations to the MCU at 10 Hz
-def BleTransmit():
-    a = 0
-    return a
+# Interrupt function, transmits the data in currentlmLocations to the MCU at ~10 Hz
+def BleTransmit(currentlmLocations):
+    toTransmit = ''
+    for lm in currentlmLocations:
+        toTransmit += chr(lm)
+        #try:
+        #    writeCharacteristic.write(toTransmit)
+        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        #    GPIO.output(18, 0)
+        #    establishBLE()        
 
 # Called upon to transmit an error packet in the event of a calibration error
 def BleTransmitError(code):
@@ -442,7 +847,23 @@ def BleTransmitError(code):
     elif(code == 5):
         print("error 5")
         #try:
-        #    writeCharacteristic.write(bytes("error code 4"))
+        #    writeCharacteristic.write(bytes("error code 5"))
+        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        #    GPIO.output(18, 0)
+        #    establishBLE()
+    # Retroreflective Tape Detection Error - Tape landmarks not in expected y range, camera lens may be inverted, keyboard may need vertical adjustment
+    elif(code == 6):
+        print("error 6")
+        #try:
+        #    writeCharacteristic.write(bytes("error code 6"))
+        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        #    GPIO.output(18, 0)
+        #    establishBLE()
+    # Black key detection error
+    elif(code == 7):
+        print("error 7")
+        #try:
+        #    writeCharacteristic.write(bytes("error code 7"))
         #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         #    GPIO.output(18, 0)
         #    establishBLE()
@@ -463,8 +884,11 @@ def main():
     cap = initCamera()
 
     # Expected Key Location Generation
-    keyContours = expectedKeyGeneration(cap)
-    print("Done")
+    white, black, whiteKeyBoundaries = expectedKeyGeneration(cap)
+    if(len(white) == 1):
+        white, black, whiteKeyBoundaries = expectedKeyGeneration(cap)
+    else:
+        print("Expected Keyboard Generation Complete")
 
     # Variable Initializations
     pTime = 0
@@ -474,9 +898,6 @@ def main():
     prevFPS = 0
     detector = handDetector()
     
-    # BLE Transmission Initialization
-    threading.Timer(0.1, lambda: BleTransmit()).start() # start a timer on a new thread for BLE transmission at 10 Hz 
-    
     # Main processing loop
     while True:
         # Reading of camera, finding position of hands/fingers
@@ -484,9 +905,6 @@ def main():
         if np.size(img) > 0:
             img = detector.findHands(img)
             lmList = detector.findPosition(img)
-        
-            # BLE Transmission Logic
-            threading.Timer(0, lambda: BleTransmit()).start()
 
             # Processing time display logic, mainly for debugging purposes
             cTime = time.time()
@@ -498,12 +916,13 @@ def main():
             if(avgFPS != prevFPS and countFPS > 5):
                 print("Average Processing Time: " + str(avgFPS) + " Hz")
             prevFPS = avgFPS
-            #cv2.putText(img, (str(int(avgFPS)) + " Hz"), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
         
             # Match fingertip lanmark locations to expected key locations
-            #global currentlmLocations
-            #currentlmLocations = matchLocations(keyContours, lmList)
-        
+            currentlmLocations = matchLocations(white, black, whiteKeyBoundaries, lmList)
+            
+            # BLE Transmission Logic
+            threading.Timer(0, lambda: BleTransmit(currentlmLocations)).start()
+            
             # Computer vision pipeline output, mainly for debugging purposes
             cv2.imshow("Image", img)
             cv2.waitKey(1)

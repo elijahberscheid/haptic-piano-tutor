@@ -141,12 +141,12 @@ static const char *modeStringTable[] = {
 
 static const char *errorStringTable[] = {
     "USB Camera Error",
-    "Retroreflective Tape Detection Error - Tape likely blocked",
-    "Retroreflective Tape Detection Error - Tape landmarks not in expected x range, keyboard needs horizontal adjustment, camera may be too close/far",
-    "Retroreflective Tape Detection Error - USB Camera too close or far",
-    "Retroreflective Tape Detection Error - Keyboard or camera lense needs straightening,"
-    "Retroreflective Tape Detection Error - Too much noise present, remove other green objects from USB camera frame",
-    "Retroreflective Tape Detection Error - Tape landmarks not in expected y range, camera lens may be inverted, keyboard may need vertical adjustment",
+    "Retroreflective Tape DetectionError - Tape likely blocked",
+    "Retroreflective Tape DetectionError - Tape landmarks not    in expected x range, keyboard needs horizontal adjustment,  camera may be too close/far",
+    "Retroreflective Tape DetectionError - USB Camera too close  or far",
+    "Retroreflective Tape DetectionError - Keyboard or camera    lens needs straightening,"
+    "Retroreflective Tape DetectionError - Too much noise        present, remove other green   objects from USB camera frame",
+    "Retroreflective Tape DetectionError - Tape landmarks not in expected y range, camera lens may be inverted, keyboard may need vertical adjustment",
     "Black Key Detection Error"
 };
 

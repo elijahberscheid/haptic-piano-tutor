@@ -254,6 +254,7 @@ void Ble_Init(void) {
     USART3->CR1 &= ~(USART_CR1_PCE); // no parity bit
     USART3->CR1 &= ~(USART_CR1_OVER8); // 16 oversampling
     USART3->BRR = 0x1A1; // 115200 baud, value is from FRM 26.5.4
+    USART3->CR3 |= USART_CR3_OVRDIS; // disable overrun flag, so previous data just gets overwritten
     USART3->CR1 |= USART_CR1_TE | USART_CR1_RE; // enable transmitter and receiver
     USART3->CR1 |= USART_CR1_UE; // enable USART
 

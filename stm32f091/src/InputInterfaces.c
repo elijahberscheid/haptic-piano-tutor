@@ -214,13 +214,13 @@ void Ble_Run(void) {
             bool error = true;
             GlobalVariables_Write(Global_CalibrationError, &error);
         }
-        else {
+        else if (strncmp("TTM", instance.rxBuffer, strlen("TTM")) != 0) {
+            // if the data received is not a configuration string, then it must be finger positions
+            // if finger positions are received, then there is no error
+            bool error = false;
+            GlobalVariables_Write(Global_CalibrationError, &error);
             GlobalVariables_Write(Global_FingerPositions, &instance.rxBuffer);
         }
-        // TODO: remove printing because it's for development only
-//        if (instance.rxBuffer[0] > 31) { // if the first character is printable, print the whole buffer
-//            printf("Received from BLE: %s\n", instance.rxBuffer);
-//        }
     }
 }
 

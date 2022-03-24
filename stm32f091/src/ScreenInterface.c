@@ -22,7 +22,8 @@ enum {
     ExpectedNotesY = SongNameY + 2 * CharacterHeight,
     ExpectedNoteNamesY = ExpectedNotesY + CharacterHeight,
     ModeY = ExpectedNoteNamesY + 2 * CharacterHeight,
-    TempoY = ModeY + CharacterHeight
+    TempoY = ModeY + CharacterHeight,
+    MaxNumCharsPerLine = (LCD_H - 2 * DefaultX) / CharacterWidth
 };
 
 static const char *keyToStringTable[] = {
@@ -139,9 +140,14 @@ static const char *modeStringTable[] = {
 };
 
 static const char *errorStringTable[] = {
-    "Error 0",
-    "Error 1",
-    "Error 2"
+    "USB Camera Error",
+    "Retroreflective Tape Detection Error - Tape likely blocked",
+    "Retroreflective Tape Detection Error - Tape landmarks not in expected x range, keyboard needs horizontal adjustment, camera may be too close/far",
+    "Retroreflective Tape Detection Error - USB Camera too close or far",
+    "Retroreflective Tape Detection Error - Keyboard or camera lense needs straightening,"
+    "Retroreflective Tape Detection Error - Too much noise present, remove other green objects from USB camera frame",
+    "Retroreflective Tape Detection Error - Tape landmarks not in expected y range, camera lens may be inverted, keyboard may need vertical adjustment",
+    "Black Key Detection Error"
 };
 
 static void UpdateState(SystemState_t state, uint16_t color) {
@@ -196,8 +202,14 @@ static void UpdateTempo(uint8_t tempo, uint16_t color) {
 static void DisplayError(uint8_t errorCode) {
     LCD_Clear(WHITE);
     LCD_DrawString(DefaultX, StateY, RED, WHITE, "Error:", CharacterHeight, 0);
+    uint16_t ypos = SongNameY;
     if (errorCode < sizeof(errorStringTable) / sizeof(errorStringTable[0])) {
-        LCD_DrawString(DefaultX, SongNameY, RED, WHITE, errorStringTable[errorCode], CharacterHeight, 0);
+        for (uint16_t charIndex = 0; charIndex < strlen(errorStringTable[errorCode]); charIndex += MaxNumCharsPerLine) {
+            char buffer[MaxNumCharsPerLine + 1] = { 0 };
+            memcpy(buffer, errorStringTable[errorCode] + charIndex, MaxNumCharsPerLine);
+            LCD_DrawString(DefaultX, ypos, RED, WHITE, buffer, CharacterHeight, 0);
+            ypos += CharacterHeight;
+        }
     }
 }
 

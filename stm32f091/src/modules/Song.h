@@ -10,7 +10,6 @@ enum {
 };
 
 typedef struct {
-    uint8_t defaultTempo;
     const Note_t *channels[Song_MaxConcurrentNotes];
 } Song_t;
 

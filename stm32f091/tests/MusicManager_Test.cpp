@@ -54,11 +54,11 @@ static const Note_t channel7[] = {
 };
 
 static const Song_t songs[] = {
-    { .defaultTempo = 60, .channels = { channel1, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
-    { .defaultTempo = 80, .channels = { channel2, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
-    { .defaultTempo = 80, .channels = { channel2, channel3, NULL, NULL, NULL, NULL, NULL, NULL } },
-    { .defaultTempo = 80, .channels = { channel4, channel5, NULL, NULL, NULL, NULL, NULL, NULL } },
-    { .defaultTempo = 80, .channels = { channel6, channel7, NULL, NULL, NULL, NULL, NULL, NULL } }
+    { .channels = { channel1, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { .channels = { channel2, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { .channels = { channel2, channel3, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { .channels = { channel4, channel5, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { .channels = { channel6, channel7, NULL, NULL, NULL, NULL, NULL, NULL } }
 };
 
 static const MusicManagerConfig_t config = { .songs = songs };

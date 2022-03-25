@@ -82,6 +82,6 @@ static const Note_t cMajorScale2[] = {
 };
 
 const Song_t Song_songs[] = { // Update Song_NumberOfSongs when changing this array
-    { .defaultTempo = 60, .channels = { maryHadALittleLamb1, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
-    { .defaultTempo = 60, .channels = { cMajorScale1, cMajorScale2, NULL, NULL, NULL, NULL, NULL, NULL } }
+    { .channels = { maryHadALittleLamb1, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { .channels = { cMajorScale1, cMajorScale2, NULL, NULL, NULL, NULL, NULL, NULL } }
 };

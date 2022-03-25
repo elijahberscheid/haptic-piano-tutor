@@ -144,7 +144,7 @@ static const char *errorStringTable[] = {
     "Retroreflective Tape DetectionError - Tape likely blocked",
     "Retroreflective Tape DetectionError - Tape landmarks not    in expected x range, keyboard needs horizontal adjustment,  camera may be too close/far",
     "Retroreflective Tape DetectionError - USB Camera too close  or far",
-    "Retroreflective Tape DetectionError - Keyboard or camera    lens needs straightening,"
+    "Retroreflective Tape DetectionError - Keyboard or camera    lens needs straightening",
     "Retroreflective Tape DetectionError - Too much noise        present, remove other green   objects from USB camera frame",
     "Retroreflective Tape DetectionError - Tape landmarks not in expected y range, camera lens may be inverted, keyboard may need vertical adjustment",
     "Black Key Detection Error"

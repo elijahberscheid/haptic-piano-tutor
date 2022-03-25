@@ -1,5 +1,6 @@
 #include "stm32f0xx.h"
 #include <stdlib.h>
+#include "audio.h"
 #include "DebugHelper.h"
 #include "ScreenInterface.h"
 #include "haptic-piano-tutor-library/src/tty.h"
@@ -27,6 +28,7 @@ int main(void) {
     FingerDistanceResolver_Init();
     Ble_Init();
     ButtonInterface_Init();
+    setup_peak_detection();
     initializeHapticState();
     SystemStateManager_Init(&systemStateManger);
     ScreenInterface_Init();
@@ -34,6 +36,7 @@ int main(void) {
     int i = 0;
     for(;;) {
         DebugHelper_Run();
+        Audio_Run();
         Ble_Run();
         ButtonInterface_Run();
         FingerDistanceResolver_Run();

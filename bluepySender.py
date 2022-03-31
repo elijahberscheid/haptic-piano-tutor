@@ -37,4 +37,8 @@ while True:
     num = [88, 88, 88, 88, 88, 87, 43, 34, 50, 55]
     byteNum = bytes(num)
     print(byteNum)
-    writeCharacteristic.write(byteNum)
+    try:
+        writeCharacteristic.write(byteNum)
+        GPIO.output(18, 1) # Pin 18 (Blue LED) on
+    except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+        GPIO.output(18, 0) # Pin 18 (Blue LED) off

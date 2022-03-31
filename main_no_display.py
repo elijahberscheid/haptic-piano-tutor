@@ -124,7 +124,7 @@ def tapeCalibration(img):
         output = cv2.drawContours(segmented_img, contours, -1, (0, 0, 255), 3)
         
         # Showing the output, debugging purposes
-        cv2.imshow("Calibration Output", output)
+        #cv2.imshow("Calibration Output", output)  # removed for console mode
         
         # Determining which contours correspond to the tape
         # Algorithm for Tape Detection v2:
@@ -228,7 +228,7 @@ def expectedKeyGeneration(cap):
     for _ in range(10):
         success, img = cap.read()
     #img = np.load("sampleImg.npy")
-    cv2.imshow("Calibration Image 2", img)
+    #cv2.imshow("Calibration Image 2", img)  # removed for console mode
     
     # Tape Calibration
     tapeContours = tapeCalibration(img)
@@ -369,7 +369,7 @@ def expectedKeyGeneration(cap):
 
         perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3)
         # Showing the output, debugging purposes
-        cv2.imshow("Perimeter Output", perimOutput)
+        #cv2.imshow("Perimeter Output", perimOutput)  # removed for console mode
 
         # Brightness Adjustment of Sample Image, debugging
         #for row in img:
@@ -447,7 +447,7 @@ def expectedKeyGeneration(cap):
         print(len(blackKeys))
         if(len(blackKeys) != 36):
             output = cv2.drawContours(segmented_img, blackKeys, -1, (0, 0, 255), 3)
-            cv2.imshow("Black Key Output", output)
+            #cv2.imshow("Black Key Output", output)  # removed for console mode
             BleTransmitError(7)
             print("***Error Occured*** Black Key Detection Error") # Black Key Detection Error
             return [0],[0],[0]
@@ -458,7 +458,7 @@ def expectedKeyGeneration(cap):
             output = cv2.drawContours(segmented_img, normalizedBlackKeys, -1, (0, 0, 255), 3)
         
             # Showing the output, debugging purposes
-            cv2.imshow("Black Key Output", output)
+            #cv2.imshow("Black Key Output", output)  # removed for console mode
             
             whiteKeyBoundaries = [0] * 51
             blackKeyGivens = [0, 2, 3, 5, 6, 7, 9, 10, 12, 13, 14, 16, 17, 19, 20, 21, 23, 24, 26, 27, 28, 30, 31, 33, 34, 35, 37, 38, 40, 41, 42, 44, 45, 47, 48, 49]
@@ -529,7 +529,7 @@ def expectedKeyGeneration(cap):
 
             whiteKeyOutput = cv2.drawContours(img, whiteKeys, -1, (0, 0, 255), 3)
             # Showing the output, debugging purposes
-            cv2.imshow("White Key Output", whiteKeyOutput)
+            #cv2.imshow("White Key Output", whiteKeyOutput)  # removed for console mode
             
             return whiteKeys, normalizedBlackKeys, whiteKeyBoundaries
             
@@ -821,7 +821,7 @@ class handDetector():
 def BleTransmit(currentlmLocations):
     toTransmit = ''
     print(currentlmLocations)
-    """
+    #"""
     for lm in currentlmLocations:
         toTransmit += chr(lm)
     toTransmit = bytes(toTransmit, "utf-8")
@@ -830,82 +830,82 @@ def BleTransmit(currentlmLocations):
     except (btle.BTLEDisconnectError, btle.BTLEInternalError):
         GPIO.output(18, 0)
         establishBLE()
-    """
+    #"""
 
 # Called upon to transmit an error packet in the event of a calibration error
 def BleTransmitError(code):
     # USB Camera Error (0)
     if(code == 0):
         print("error 0")
-        #try:
-        #    BLEVar.write(bytes("error code 0", "utf-8"))
-        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        #    GPIO.output(18, 0)
-        #    establishBLE()
+        try:
+            BLEVar.write(bytes("error code 0", "utf-8"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
     # Retroreflective Tape Detection Error - Tape likely blocked (1)
     elif(code == 1):
         print("error 1")
-        #try:
-        #    BLEVar.write(bytes("error code 1", "utf-8"))
-        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        #    GPIO.output(18, 0)
-        #    establishBLE()
+        try:
+            BLEVar.write(bytes("error code 1", "utf-8"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
     # Retroreflective Tape Detection Error - Tape landmarks not in expected x range, keyboard needs horizontal adjustment, camera may be too close/far
     elif(code == 2):
         print("error 2")
-        #try:
-        #    BLEVar.write(bytes("error code 2", "utf-8"))
-        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        #    GPIO.output(18, 0)
-        #    establishBLE()
+        try:
+            BLEVar.write(bytes("error code 2", "utf-8"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
     # Retroreflective Tape Detection Error - USB Camera too close or far
     elif(code == 3):
         print("error 3")
-        #try:
-        #    BLEVar.write(bytes("error code 3", "utf-8"))
-        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        #    GPIO.output(18, 0)
-        #    establishBLE()
+        try:
+            BLEVar.write(bytes("error code 3", "utf-8"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
     # Retroreflective Tape Detection Error - Keyboard or camera lense needs straightening 
     elif(code == 4):
         print("error 4")
-        #try:
-        #    BLEVar.write(bytes("error code 4", "utf-8"))
-        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        #    GPIO.output(18, 0)
-        #    establishBLE()
+        try:
+            BLEVar.write(bytes("error code 4", "utf-8"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
     # Retroreflective Tape Detection Error - Too much noise present, remove other green objects from USB camera frame 
     elif(code == 5):
         print("error 5")
-        #try:
-        #    BLEVar.write(bytes("error code 5", "utf-8"))
-        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        #    GPIO.output(18, 0)
-        #    establishBLE()
+        try:
+            BLEVar.write(bytes("error code 5", "utf-8"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
     # Retroreflective Tape Detection Error - Tape landmarks not in expected y range, camera lens may be inverted, keyboard may need vertical adjustment
     elif(code == 6):
         print("error 6")
-        #try:
-        #    BLEVar.write(bytes("error code 6", "utf-8"))
-        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        #    GPIO.output(18, 0)
-        #    establishBLE()
+        try:
+            BLEVar.write(bytes("error code 6", "utf-8"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
     # Black key detection error
     elif(code == 7):
         print("error 7")
-        #try:
-        #    BLEVar.write(bytes("error code 7", "utf-8"))
-        #except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        #    GPIO.output(18, 0)
-        #    establishBLE()
+        try:
+            BLEVar.write(bytes("error code 7", "utf-8"))
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
         
 # Main function
 def main():
     # Bluetooth Initialization 
-    #GPIO.setmode(GPIO.BOARD)
-    #GPIO.setup(18, GPIO.OUT)
-    #GPIO.output(18, 0) # Ensure blue LED is off
-    #establishBLE()
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(18, GPIO.OUT)
+    GPIO.output(18, 0) # Ensure blue LED is off
+    establishBLE()
     
     # Bluetooth Error Code Testing
     #BleTransmitError(0)
@@ -955,8 +955,9 @@ def main():
             threading.Timer(0, lambda: BleTransmit(currentlmLocations)).start()
             
             # Computer vision pipeline output, mainly for debugging purposes
-            cv2.imshow("Image", img)
+            #cv2.imshow("Image", img)  # removed for console mode
             cv2.waitKey(1)
 
 if __name__ == '__main__':
     main()
+

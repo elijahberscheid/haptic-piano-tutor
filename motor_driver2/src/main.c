@@ -22,6 +22,30 @@ int main(void) {
 
         int inputNum = (C6 << 0) | (C7 << 1) | (C8 << 2) | (C9 << 3) | (C12 << 4) | (C11 << 5);
 
+
+        if (inputNum == 0) {
+            for (int i = 0; i < 10; ++i) distanceVector[i] = 88;
+        }
+        else if (inputNum == 1) {
+            //for (int i = 0; i < 10; ++i)
+                //distanceVector[i] = 9;
+            distanceVector[0] = 9;
+            distanceVector[2] = 9;
+            distanceVector[4] = 9;
+        } else if (inputNum == 2) {
+            //for (int i = 0; i < 10; ++i)
+                //distanceVector[i] = -9;
+            distanceVector[0] = -9;
+            distanceVector[2] = -9;
+            distanceVector[4] = -9;
+        } else if (inputNum == 3) {
+            //for (int i = 0; i < 10; ++i)
+                //distanceVector[i] = 40;
+        }
+
+
+
+        /*
         if (inputNum < NUMBER_OF_FINGERS) {
             for (int i = 0; i < 10; ++i) {
                 if (i == inputNum)
@@ -35,12 +59,13 @@ int main(void) {
             distanceVector[2] = 88;
             distanceVector[3] = 88;
             distanceVector[4] = 88;
-            distanceVector[5] = 16;
+            distanceVector[5] = 88;
             distanceVector[6] = 88;
             distanceVector[7] = 88;
             distanceVector[8] = 88;
             distanceVector[9] = 88;
         }
+        // */
     }
 }
 

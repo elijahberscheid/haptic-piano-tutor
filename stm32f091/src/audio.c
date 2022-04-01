@@ -61,8 +61,8 @@ static int read_adc(void)
 // Parameters for peak detection
 //============================================================================
 #define N 10
-#define DECAY 25
-#define MIN_T 200
+#define DECAY 50
+#define MIN_T 900
 static int buffer_vals[N];
 static char buffer_peak[N];
 static int ind = 0;
@@ -84,7 +84,7 @@ void TIM6_DAC_IRQHandler(void) {
 
     if((buffer_vals[ind] >= MIN_T) &&
        (buffer_vals[ind] > expmin) &&
-       (last_peak > 2)){
+       (last_peak > 4)){
         peak_flag++;
         last_peak = 0;
         buffer_peak[ind] = 1;
@@ -93,7 +93,7 @@ void TIM6_DAC_IRQHandler(void) {
         buffer_peak[ind] = 0;
         last_peak++;
     }
-    expmin = buffer_vals[ind] - DECAY;//> expmin ? buffer_vals[ind] - DECAY : expmin - DECAY;
+    expmin = buffer_vals[ind] > expmin ? buffer_vals[ind] - DECAY : expmin - DECAY;
     ind = (ind + 1) % N;
 }
 

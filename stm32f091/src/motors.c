@@ -101,7 +101,7 @@ void TIM3_IRQHandler() {
         }
 
         // period = desiredFreq/updateFrequency
-        if (absoluteDistance >= 20) { // finger is far from key
+        if (absoluteDistance >= 50) { // finger is far from key
             fingerHapticStates[i].dutyCycle = 0;  // Turn off motors for this finger
             //fingerHapticStates[i].period = 30;  // Arbitrary
             if (absoluteDistance < 88) { // this block is for wrist motors, but only if all fingers in 20-87 range
@@ -112,11 +112,11 @@ void TIM3_IRQHandler() {
                 }
             }
         } else if (absoluteDistance >= 2) { // finger is nearby key
-            fingerHapticStates[i].dutyCycle = 40;
-            fingerHapticStates[i].period = 60;
+            fingerHapticStates[i].dutyCycle = 30;
+            fingerHapticStates[i].period = 50;
         } else { // finger is basically on top of key
-            fingerHapticStates[i].dutyCycle = 16;
-            fingerHapticStates[i].period = 60;
+            fingerHapticStates[i].dutyCycle = 0;
+            fingerHapticStates[i].period = 50;
             // Activate both motors
             fingerHapticStates[i].leftActive = 1;
             fingerHapticStates[i].rightActive = 1;

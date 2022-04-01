@@ -111,7 +111,7 @@ void TIM3_IRQHandler() {
                   ++numberOfFarRightFingers;
                 }
             }
-        } else if (absoluteDistance >= 2) { // finger is nearby key
+        } else if (absoluteDistance >= 1) { // finger is nearby key
             fingerHapticStates[i].dutyCycle = 30;
             fingerHapticStates[i].period = 50;
         } else { // finger is basically on top of key

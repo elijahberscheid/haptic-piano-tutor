@@ -62,7 +62,7 @@ static int read_adc(void)
 //============================================================================
 #define N 10
 #define DECAY 50
-#define MIN_T 900
+#define MIN_T 1000
 static int buffer_vals[N];
 static char buffer_peak[N];
 static int ind = 0;

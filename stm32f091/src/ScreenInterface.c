@@ -23,6 +23,7 @@ enum {
     ExpectedNoteNamesY = ExpectedNotesY + CharacterHeight,
     ModeY = ExpectedNoteNamesY + 2 * CharacterHeight,
     TempoY = ModeY + CharacterHeight,
+    DebugY = TempoY + CharacterHeight,
     MaxNumCharsPerLine = (LCD_H - 2 * DefaultX) / CharacterWidth
 };
 
@@ -298,6 +299,28 @@ static void DesiredPositionsChanged(void *context, const void *data) {
     }
 }
 
+static void ActualPositionsChanged(void *context, const void *data) {
+    IGNORE(context);
+    uint8_t *expected = (uint8_t *) data;
+
+    LCD_DrawFillRectangle(0, DebugY, lcddev.width -1, DebugY + CharacterHeight, WHITE);
+
+    uint16_t xpos = DefaultX;
+    uint8_t invalidNoteCount = 0;
+    for (uint8_t i = 0; i < DistanceArrayLength; i++) {
+        if (expected[i] < Key_Invalid) {
+            LCD_DrawString(xpos, DebugY, BLACK, WHITE, keyToStringTable[expected[i]], 16, 0);
+            xpos += (strlen(keyToStringTable[expected[i]]) + 1) * CharacterWidth;
+        }
+        else {
+            invalidNoteCount++;
+        }
+    }
+    if (invalidNoteCount == DistanceArrayLength) {
+        LCD_DrawFillRectangle(0, DebugY, lcddev.width -1, DebugY + CharacterHeight, WHITE);
+    }
+}
+
 static void SongIndexChanged(void *context, const void *data) {
     IGNORE(context);
     uint8_t *songIndex = (uint8_t *) data;
@@ -389,6 +412,9 @@ void ScreenInterface_Init(void) {
 
     const GlobalVariables_Subscription_t desiredPositionsSubscription = { .context = NULL, .callback = DesiredPositionsChanged };
     GlobalVariables_Subscribe(Global_DesiredFingerPositions, &desiredPositionsSubscription);
+
+    const GlobalVariables_Subscription_t actualPositionsSubscription = { .context = NULL, .callback = ActualPositionsChanged };
+    GlobalVariables_Subscribe(Global_FingerPositions, &actualPositionsSubscription);
 
     const GlobalVariables_Subscription_t songIndexSubscription = { .context = NULL, .callback = SongIndexChanged };
     GlobalVariables_Subscribe(Global_SongIndex, &songIndexSubscription);

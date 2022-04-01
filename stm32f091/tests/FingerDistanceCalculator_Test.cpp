@@ -51,6 +51,22 @@ TEST(FingerDistanceCalculator, ShouldSetDistancesToRestWhenDesiredPositionsAreRe
     CheckDistances(expected, actual);
 }
 
+TEST(FingerDistanceCalculator, ShouldSetDistancesToRestWhenDesiredPositionsAreInvalid) {
+    uint8_t positions[] = {
+        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid,
+        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid
+    };
+    GlobalVariables_Write(Global_DesiredFingerPositions, &positions);
+
+    int8_t expected[] = {
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest,
+        Key_Rest, Key_Rest, Key_Rest, Key_Rest, Key_Rest
+    };
+    int8_t actual[DistanceArrayLength] = { 0 };
+    GlobalVariables_Read(Global_FingerDistances, actual);
+    CheckDistances(expected, actual);
+}
+
 TEST(FingerDistanceCalculator, ShouldSetDistancesWhenDesiredPositionsChange) {
     uint8_t positions[] = {
         Key_G1, Key_A2, Key_Rest, Key_Rest, Key_Rest,

@@ -13,7 +13,7 @@ enum {
 static void WriteDistances(uint8_t *expected, uint8_t *actual) {
     int8_t difference[DistanceArrayLength] = { 0 };
     for (uint8_t fingerIndex = 0; fingerIndex < DistanceArrayLength; fingerIndex++) {
-        if ((expected[fingerIndex] == Key_Rest) || (actual[fingerIndex] == Key_Invalid)) {
+        if ((expected[fingerIndex] == Key_Rest) || (expected[fingerIndex] == Key_Invalid) || (actual[fingerIndex] == Key_Invalid)) {
             difference[fingerIndex] = Key_Rest;
         }
         else {

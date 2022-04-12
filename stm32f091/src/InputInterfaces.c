@@ -42,7 +42,6 @@ typedef struct {
     uint8_t txMessageLength;
     uint8_t txIndex;
     char rxBuffer[RxBufferLength];
-    uint8_t rxIndex;
     volatile bool doneReceiving;
 } Ble_t;
 
@@ -100,12 +99,7 @@ static void Timer16_Init(uint32_t frequency) {
 }
 
 void USART3_4_5_6_7_8_IRQHandler(void) {
-    if (USART3->ISR & USART_ISR_RXNE) { // if receiver is filled
-        if (instance.rxIndex < RxBufferLength - 1) { // ignore data if buffer is full, leave space for null terminator
-            instance.rxBuffer[instance.rxIndex] = USART3->RDR;
-            instance.rxIndex++;
-        }
-    }
+    // RX handled by DMA
 
     if (USART3->ISR & USART_ISR_TXE) { // if transmitter is empty
         if (instance.txIndex == instance.txMessageLength) {
@@ -141,10 +135,12 @@ void EXTI4_15_IRQHandler(void) {
         EXTI->PR = 1 << IntPin; // acknowledge interrupt
         if (GPIOB->IDR & (1 << IntPin)) { // done receiving
             instance.doneReceiving = true;
+            DMA2_Channel2->CCR &= ~(DMA_CCR_EN); // disable DMA
         }
         else { // start receiving
             memset(instance.rxBuffer, 0, RxBufferLength * sizeof(*instance.rxBuffer));
-            instance.rxIndex = 0;
+            DMA2_Channel2->CNDTR = RxBufferLength; // reset number of data to transfer, so transfer starts at beginning of buffer
+            DMA2_Channel2->CCR |= DMA_CCR_EN; // enable DMA
         }
     }
 
@@ -229,7 +225,6 @@ void Ble_Init(void) {
     instance.txMessageLength = 0;
     instance.txIndex = 0;
     memset(instance.rxBuffer, 0, RxBufferLength * sizeof(*instance.rxBuffer));
-    instance.rxIndex = 0;
 
     // configure port B
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
@@ -256,12 +251,25 @@ void Ble_Init(void) {
     USART3->BRR = 0x1A1; // 115200 baud, value is from FRM 26.5.4
     USART3->CR3 |= USART_CR3_OVRDIS; // disable overrun flag, so previous data just gets overwritten
     USART3->CR1 |= USART_CR1_TE | USART_CR1_RE; // enable transmitter and receiver
+    USART3->CR3 |= USART_CR3_DMAR; // enable receiver to trigger DMA
     USART3->CR1 |= USART_CR1_UE; // enable USART
 
     while (!((USART3->ISR & USART_ISR_TEACK) && (USART3->ISR & USART_ISR_REACK))); // wait for TE and RE to take effect
 
     USART3->CR1 |= USART_CR1_RXNEIE; // interrupt on receiving data
     NVIC->ISER[0] = (1 << USART3_8_IRQn); // unmask in NVIC
+
+    // configure DMA to transfer data from USART receive register to buffer
+    RCC->AHBENR |= RCC_AHBENR_DMA2EN;
+    DMA2_Channel2->CCR &= ~(DMA_CCR_EN); // disable DMA before configuring
+    DMA2_Channel2->CCR &= ~(DMA_CCR_MSIZE | DMA_CCR_PSIZE); // 8 bit word size
+    DMA2_Channel2->CCR |= DMA_CCR_MINC; // increment memory address
+    DMA2_Channel2->CCR &= ~(DMA_CCR_PINC); // do not increment peripheral address
+    DMA2_Channel2->CCR &= ~(DMA_CCR_DIR); // transfer from peripheral to memory
+    DMA2_Channel2->CNDTR = RxBufferLength; // number of data to transfer
+    DMA2_Channel2->CPAR = (uint32_t) &(USART3->RDR);
+    DMA2_Channel2->CMAR = (uint32_t) &instance.rxBuffer;
+    DMA2->RMPCR |= DMA_RMPCR2_CH2_USART3_RX; // select USART3 Rx for channel 2, named DMA_CSELR in FRM
 
     Timer16_Init(500); // for sending data
 

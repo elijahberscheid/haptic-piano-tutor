@@ -63,14 +63,38 @@ static int read_adc(void)
 #define N 10
 #define DECAY 50
 #define MIN_T 1000
+#define N_CALIB 200
 static int buffer_vals[N];
 static int ind = 0;
 static int prev = N - 1;
-static int expmin = 0;
+//static int expmin = 0;
 static int peak_flag = 0;
 static int last_peak = 0;
-int thresh = 25;
-int min_peak_time = 3;
+static int thresh = 10;
+static int min_peak_time = 2;
+static int background_max = 0;
+
+//============================================================================
+// Timer 7 ISR
+// Turns off the peak draining transistor
+//============================================================================
+void TIM2_IRQHandler(void) {
+    // Acknowledge interrupt (UIF = 0)
+    TIM2->SR = 0;
+    static int sample = 0;
+    sample = read_adc();
+    GPIOA -> ODR |= 1 << 10;
+    TIM7 -> CR1 |= TIM_CR1_CEN;
+    ADC1->CR |= ADC_CR_ADSTART;
+    static int max = 0;
+    static int iter = 0;
+    max = max > sample ? max : sample;
+    if (iter++ > N_CALIB) {
+        background_max = max + (max >> 3);
+        TIM2 -> CR1 &= ~TIM_CR1_CEN;
+        TIM6 -> CR1 |= TIM_CR1_CEN;
+    }
+}
 
 //============================================================================
 // Timer 6 ISR    (Autotest #8)
@@ -84,14 +108,15 @@ void TIM6_DAC_IRQHandler(void) {
     TIM7 -> CR1 |= TIM_CR1_CEN;
     ADC1->CR |= ADC_CR_ADSTART;
     int peak_time = 0;
-    if(buffer_vals[ind] > buffer_vals[prev] + thresh) {
+    if(buffer_vals[ind] > buffer_vals[prev] + thresh){
         last_peak = prev;
         peak_time = 0;
     }
-    if(buffer_vals[ind] > buffer_vals[last_peak] + thresh) {
+    if(buffer_vals[ind] > background_max) {
         peak_time++;
-        if(peak_time > min_peak_time)
+        if(peak_time == min_peak_time) {
             peak_flag++;
+        }
     }
     else {
         peak_time = 0;
@@ -107,8 +132,9 @@ void TIM6_DAC_IRQHandler(void) {
     else {
         buffer_peak[ind] = 0;
         last_peak++;
-    }*/
+    }
     expmin = buffer_vals[ind] - DECAY;//> expmin ? buffer_vals[ind] - DECAY : expmin - DECAY;
+    */
     prev = ind;
     ind = (ind + 1) % N;
 }
@@ -127,10 +153,25 @@ void TIM7_IRQHandler(void) {
 // GPIO A Setup
 // Configures GPIO A for output
 //============================================================================
-static void setup_gpioa(void) {
+void setup_gpioa(void) {
     RCC -> AHBENR |= RCC_AHBENR_GPIOAEN;
     GPIOA -> MODER |= GPIO_MODER_MODER10_0;
     GPIOA -> ODR &= ~(1<<10);
+}
+
+//============================================================================
+// setup_tim2()
+// Configure Timer 2 to raise an interrupt every t_ms milliseconds
+// Parameters: none
+//============================================================================
+void setup_tim2(int t_ms)
+{
+    RCC -> APB1ENR |= RCC_APB1ENR_TIM2EN;
+    TIM2 -> PSC = 48000-1;
+    TIM2 -> ARR = t_ms - 1;
+    TIM2 -> DIER |= 1;
+    TIM2 -> CR1 |= TIM_CR1_CEN;
+    NVIC -> ISER[0] = 1<<TIM2_IRQn;
 }
 
 //============================================================================
@@ -138,13 +179,13 @@ static void setup_gpioa(void) {
 // Configure Timer 6 to raise an interrupt every t_ms milliseconds
 // Parameters: none
 //============================================================================
-static void setup_tim6(int t_ms)
+void setup_tim6(int t_ms)
 {
     RCC -> APB1ENR |= RCC_APB1ENR_TIM6EN;
     TIM6 -> PSC = 48000-1;
     TIM6 -> ARR = t_ms - 1;
     TIM6 -> DIER |= 1;
-    TIM6 -> CR1 |= TIM_CR1_CEN;
+    //TIM6 -> CR1 |= TIM_CR1_CEN;
     NVIC -> ISER[0] = 1<<TIM6_DAC_IRQn;
 }
 
@@ -184,6 +225,7 @@ void setup_peak_detection(){
     setup_gpioa();
     setup_adc();
     start_adc_channel(10);
+    setup_tim2(50);
     setup_tim6(50);
     setup_tim7(5);
 }

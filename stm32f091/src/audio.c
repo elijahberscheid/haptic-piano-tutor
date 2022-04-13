@@ -64,8 +64,8 @@ static int read_adc(void)
 #define DECAY 50
 #define MIN_T 1000
 static int buffer_vals[N];
-static char buffer_peak[N];
 static int ind = 0;
+static int prev = N - 1;
 static int expmin = 0;
 static int peak_flag = 0;
 static int last_peak = 0;
@@ -84,7 +84,7 @@ void TIM6_DAC_IRQHandler(void) {
     TIM7 -> CR1 |= TIM_CR1_CEN;
     ADC1->CR |= ADC_CR_ADSTART;
     int peak_time = 0;
-    if(buffer_vals[ind] > buffer_vals[prev] + thresh){
+    if(buffer_vals[ind] > buffer_vals[prev] + thresh) {
         last_peak = prev;
         peak_time = 0;
     }

@@ -69,6 +69,8 @@ static int ind = 0;
 static int expmin = 0;
 static int peak_flag = 0;
 static int last_peak = 0;
+int thresh = 25;
+int min_peak_time = 3;
 
 //============================================================================
 // Timer 6 ISR    (Autotest #8)
@@ -81,10 +83,23 @@ void TIM6_DAC_IRQHandler(void) {
     GPIOA -> ODR |= 1 << 10;
     TIM7 -> CR1 |= TIM_CR1_CEN;
     ADC1->CR |= ADC_CR_ADSTART;
-
+    int peak_time = 0;
+    if(buffer_vals[ind] > buffer_vals[prev] + thresh){
+        last_peak = prev;
+        peak_time = 0;
+    }
+    if(buffer_vals[ind] > buffer_vals[last_peak] + thresh) {
+        peak_time++;
+        if(peak_time > min_peak_time)
+            peak_flag++;
+    }
+    else {
+        peak_time = 0;
+    }
+    /*
     if((buffer_vals[ind] >= MIN_T) &&
        (buffer_vals[ind] > expmin) &&
-       (last_peak > 4)){
+       (last_peak > 2)){
         peak_flag++;
         last_peak = 0;
         buffer_peak[ind] = 1;
@@ -92,8 +107,9 @@ void TIM6_DAC_IRQHandler(void) {
     else {
         buffer_peak[ind] = 0;
         last_peak++;
-    }
-    expmin = buffer_vals[ind] > expmin ? buffer_vals[ind] - DECAY : expmin - DECAY;
+    }*/
+    expmin = buffer_vals[ind] - DECAY;//> expmin ? buffer_vals[ind] - DECAY : expmin - DECAY;
+    prev = ind;
     ind = (ind + 1) % N;
 }
 

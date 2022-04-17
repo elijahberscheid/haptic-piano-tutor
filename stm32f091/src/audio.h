@@ -3,5 +3,6 @@
 
 void Audio_Run(void);
 void setup_peak_detection(void);
+void calib_background(void);
 
 #endif

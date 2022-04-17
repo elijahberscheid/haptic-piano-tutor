@@ -61,21 +61,20 @@ static int read_adc(void)
 // Parameters for peak detection
 //============================================================================
 #define N 10
-#define DECAY 50
-#define MIN_T 1000
-#define N_CALIB 200
+#define N_CALIB 100
+#define COOLDOWN 4
+#define THRESH 200
 static int buffer_vals[N];
 static int ind = 0;
-static int prev = N - 1;
-//static int expmin = 0;
 static int peak_flag = 0;
 static int last_peak = 0;
-static int thresh = 10;
-static int min_peak_time = 2;
-static int background_max = 0;
+static int bg_max = 0;
+static int bg_iter = 0;
+static int old_sum = 0;
+static int new_sum = 0;
 
 //============================================================================
-// Timer 7 ISR
+// Timer 2 ISR
 // Turns off the peak draining transistor
 //============================================================================
 void TIM2_IRQHandler(void) {
@@ -86,11 +85,9 @@ void TIM2_IRQHandler(void) {
     GPIOA -> ODR |= 1 << 10;
     TIM7 -> CR1 |= TIM_CR1_CEN;
     ADC1->CR |= ADC_CR_ADSTART;
-    static int max = 0;
-    static int iter = 0;
-    max = max > sample ? max : sample;
-    if (iter++ > N_CALIB) {
-        background_max = max + (max >> 3);
+    bg_max = bg_max > sample ? bg_max : sample;
+    if (bg_iter++ > N_CALIB) {
+        bg_max = bg_max + (bg_max >> 4);
         TIM2 -> CR1 &= ~TIM_CR1_CEN;
         TIM6 -> CR1 |= TIM_CR1_CEN;
     }
@@ -107,35 +104,20 @@ void TIM6_DAC_IRQHandler(void) {
     GPIOA -> ODR |= 1 << 10;
     TIM7 -> CR1 |= TIM_CR1_CEN;
     ADC1->CR |= ADC_CR_ADSTART;
-    int peak_time = 0;
-    if(buffer_vals[ind] > buffer_vals[prev] + thresh){
-        last_peak = prev;
-        peak_time = 0;
-    }
-    if(buffer_vals[ind] > background_max) {
-        peak_time++;
-        if(peak_time == min_peak_time) {
-            peak_flag++;
-        }
-    }
-    else {
-        peak_time = 0;
-    }
-    /*
-    if((buffer_vals[ind] >= MIN_T) &&
-       (buffer_vals[ind] > expmin) &&
-       (last_peak > 2)){
-        peak_flag++;
+
+    int mid = buffer_vals[(ind+N-3)%N];
+    new_sum += buffer_vals[ind] - mid;
+    old_sum += mid - buffer_vals[(ind+N-6)%N];
+
+    if(new_sum > old_sum + THRESH
+            && last_peak > COOLDOWN
+            && buffer_vals[ind] > bg_max) {
         last_peak = 0;
-        buffer_peak[ind] = 1;
+        peak_flag++;
     }
     else {
-        buffer_peak[ind] = 0;
         last_peak++;
     }
-    expmin = buffer_vals[ind] - DECAY;//> expmin ? buffer_vals[ind] - DECAY : expmin - DECAY;
-    */
-    prev = ind;
     ind = (ind + 1) % N;
 }
 
@@ -209,6 +191,14 @@ int check_peak(){
     int ret_val = peak_flag;
     peak_flag = 0;
     return ret_val;
+}
+
+// Run background noise calibration
+void calib_background(void) {
+    bg_iter = 0;
+    bg_max = 0;
+    TIM6 -> CR1 &= ~TIM_CR1_CEN;
+    TIM2 -> CR1 |= TIM_CR1_CEN;
 }
 
 void Audio_Run(void) {

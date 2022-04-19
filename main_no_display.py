@@ -1,3 +1,6 @@
+#!/usr/bin/env python3.8
+
+
 # Prerequisites: sudo apt update, sudo apt-get install python3-opencv
 # References: https://docs.opencv.org/3.4/d2/de6/tutorial_py_setup_in_ubuntu.html
 import cv2
@@ -234,304 +237,259 @@ def expectedKeyGeneration(cap):
     tapeContours = tapeCalibration(img)
     if(len(tapeContours) != 4):
         while(len(tapeContours) != 4):
-            print(len(tapeContours))
             BleTransmitError(7)
             print("***Error Occured*** expectedKeyGeneration Tape Detection Error Type 7") # Too much noise, remove other green objects
+            success, img = cap.read()
             tapeContours = tapeCalibration(img)
-    else:
-        # Extract the perimeter corners of the keyboard from the tape contours
-        # NOTE: keyboard is expected to be upside down in the USB camera feed
-        upperLeftTape = 0
-        upperRightTape = 0
-        lowerLeftTape = 0
-        lowerRightTape = 0
-    
-        xMidway = 0
-        yMidway = 0
-        for contour in tapeContours:
-            xMidway += contour[0][0][0]
-            yMidway += contour[0][0][1]
-        xMidway = xMidway/4
-        yMidway = yMidway/4
-    
-        for contour in tapeContours:
-            if(contour[0][0][0] < xMidway and contour[0][0][1] < yMidway):
-                lowerRightTape = contour
-            elif(contour[0][0][0] < xMidway and contour[0][0][1] > yMidway):
-                upperRightTape = contour
-            elif(contour[0][0][0] > xMidway and contour[0][0][1] < yMidway):
-                lowerLeftTape = contour
-            elif(contour[0][0][0] > xMidway and contour[0][0][1] > yMidway):
-                upperLeftTape = contour
-    
-        # Define perimeter corner coordinates:
-        lowerLeftX = 0
-        lowerLeftY = 0
-        upperLeftX = 0
-        upperLeftY = 0
-        lowerRightX = 0
-        lowerRightY = 0
-        upperRightX = 0
-        upperRightY = 0
-    
-        for coordinate in lowerLeftTape:
-            rcoordinate = coordinate[0]
-            if(lowerLeftX == 0):
-                lowerLeftX = rcoordinate[0]
-            if(lowerLeftY == 0):
-                lowerLeftY = rcoordinate[1]
-            if(rcoordinate[0] < lowerLeftX):
-                lowerLeftX = rcoordinate[0]
-            if(rcoordinate[1] < lowerLeftY):
-                lowerLeftY = rcoordinate[1]
-    
-        for coordinate in upperLeftTape:
-            rcoordinate = coordinate[0]
-            if(upperLeftX == 0):
-                upperLeftX = rcoordinate[0]
-            if(upperLeftY == 0):
-                upperLeftY = rcoordinate[1]
-            if(rcoordinate[0] < upperLeftX):
-                upperLeftX = rcoordinate[0]
-            if(rcoordinate[1] < upperLeftY):
-                upperLeftY = rcoordinate[1]
-            
-        for coordinate in lowerRightTape:
-            rcoordinate = coordinate[0]
-            if(lowerRightX == 0):
-                lowerRightX = rcoordinate[0]
-            if(lowerRightY == 0):
-                lowerRightY = rcoordinate[1]
-            if(rcoordinate[0] > lowerRightX):
-                lowerRightX = rcoordinate[0]
-            if(rcoordinate[1] < lowerRightY):
-                lowerRightY = rcoordinate[1]
+    # Extract the perimeter corners of the keyboard from the tape contours
+    # NOTE: keyboard is expected to be upside down in the USB camera feed
+    upperLeftTape = 0
+    upperRightTape = 0
+    lowerLeftTape = 0
+    lowerRightTape = 0
 
-        for coordinate in upperRightTape:
-            rcoordinate = coordinate[0]
-            if(upperRightX == 0):
-                upperRightX = rcoordinate[0]
-            if(upperRightY == 0):
-                upperRightY = rcoordinate[1]
-            if(rcoordinate[0] > upperRightX):
-                upperRightX = rcoordinate[0]
-            if(rcoordinate[1] < upperRightY):
-                upperRightY = rcoordinate[1]
-            
-        print("KEYBOARD PERIMETER CORNER POINTS:")
-        print("True upperLeftX: x: " + str(upperLeftX))
-        print("True upperLeftY: y: " + str(upperLeftY))
-        print("True lowerLeftX: x: " + str(lowerLeftX))
-        print("True lowerLeftY: y: " + str(lowerLeftY))
-        print("True lowerRightX: x: " + str(lowerRightX))
-        print("True lowerRightY: y: " + str(lowerRightY))
-        print("True upperRightX: x: " + str(upperRightX))
-        print("True upperRightY: y: " + str(upperRightY))
-    
-        upperLeft = [upperLeftX, upperLeftY]
-        upperRight = [upperRightX, upperRightY]
-        lowerLeft = [lowerLeftX, lowerLeftY]
-        lowerRight = [lowerRightX, lowerRightY]
-    
-        xLength = lowerLeftX - lowerRightX
-        yLength = upperLeftY - lowerLeftY
-        xDiff = xLength / 6
-        xp1 = lowerRightX + xDiff # Roughly 22% y distortion
-        # (289.5, 121)
-        xp2 = lowerRightX + 2*xDiff # Roughly 33% y distortion
-        # (472, 106)
-        xp3 = lowerRightX + 3*xDiff # Roughly 37% y distortion 
-        # (654.5, 101) 
-        xp4 = lowerRightX + 4*xDiff # Roughtly 33% y distortion
-        # (837, 108) 
-        xp5 = lowerRightX + 5*xDiff # Roughly 22% y distortion
-        # (1019.5, 122)
+    xMidway = 0
+    yMidway = 0
+    for contour in tapeContours:
+        xMidway += contour[0][0][0]
+        yMidway += contour[0][0][1]
+    xMidway = xMidway/4
+    yMidway = yMidway/4
 
-        p1 = [xp1, lowerLeftY - yLength*0.30]
-        p2 = [xp2, lowerLeftY - yLength*0.40]
-        p3 = [xp3, lowerLeftY - yLength*0.44]
-        p4 = [xp4, lowerLeftY - yLength*0.40]
-        p5 = [xp5, lowerLeftY - yLength*0.28]
+    for contour in tapeContours:
+        if(contour[0][0][0] < xMidway and contour[0][0][1] < yMidway):
+            lowerRightTape = contour
+        elif(contour[0][0][0] < xMidway and contour[0][0][1] > yMidway):
+            upperRightTape = contour
+        elif(contour[0][0][0] > xMidway and contour[0][0][1] < yMidway):
+            lowerLeftTape = contour
+        elif(contour[0][0][0] > xMidway and contour[0][0][1] > yMidway):
+            upperLeftTape = contour
+
+    # Define perimeter corner coordinates:
+    lowerLeftX = 0
+    lowerLeftY = 0
+    upperLeftX = 0
+    upperLeftY = 0
+    lowerRightX = 0
+    lowerRightY = 0
+    upperRightX = 0
+    upperRightY = 0
+
+    for coordinate in lowerLeftTape:
+        rcoordinate = coordinate[0]
+        if(lowerLeftX == 0):
+            lowerLeftX = rcoordinate[0]
+        if(lowerLeftY == 0):
+            lowerLeftY = rcoordinate[1]
+        if(rcoordinate[0] < lowerLeftX):
+            lowerLeftX = rcoordinate[0]
+        if(rcoordinate[1] < lowerLeftY):
+            lowerLeftY = rcoordinate[1]
+
+    for coordinate in upperLeftTape:
+        rcoordinate = coordinate[0]
+        if(upperLeftX == 0):
+            upperLeftX = rcoordinate[0]
+        if(upperLeftY == 0):
+            upperLeftY = rcoordinate[1]
+        if(rcoordinate[0] < upperLeftX):
+            upperLeftX = rcoordinate[0]
+        if(rcoordinate[1] < upperLeftY):
+            upperLeftY = rcoordinate[1]
         
-        #p6 = [xp1, upperLeftY - yLength*0.17]
-        #p7 = [xp2, upperLeftY - yLength*0.21]
-        #p8 = [xp3, upperLeftY - yLength*0.26]
-        #p9 = [xp4, upperLeftY - yLength*0.21]
-        #p0 = [xp5, upperLeftY - yLength*0.17]
-  
-        perimeter = [np.array([[upperLeftX, upperLeftY + 5], [upperRightX, upperRightY + 5], lowerRight, p1, p2, p3, p4, p5, lowerLeft], dtype=np.int32)]
-        #np.save("perimeter.npy", perimeter)
+    for coordinate in lowerRightTape:
+        rcoordinate = coordinate[0]
+        if(lowerRightX == 0):
+            lowerRightX = rcoordinate[0]
+        if(lowerRightY == 0):
+            lowerRightY = rcoordinate[1]
+        if(rcoordinate[0] > lowerRightX):
+            lowerRightX = rcoordinate[0]
+        if(rcoordinate[1] < lowerRightY):
+            lowerRightY = rcoordinate[1]
 
-        # Brightness Adjustment of Sample Image, debugging
+    for coordinate in upperRightTape:
+        rcoordinate = coordinate[0]
+        if(upperRightX == 0):
+            upperRightX = rcoordinate[0]
+        if(upperRightY == 0):
+            upperRightY = rcoordinate[1]
+        if(rcoordinate[0] > upperRightX):
+            upperRightX = rcoordinate[0]
+        if(rcoordinate[1] < upperRightY):
+            upperRightY = rcoordinate[1]
+        
+    print("KEYBOARD PERIMETER CORNER POINTS:")
+    print("True upperLeftX: x: " + str(upperLeftX))
+    print("True upperLeftY: y: " + str(upperLeftY))
+    print("True lowerLeftX: x: " + str(lowerLeftX))
+    print("True lowerLeftY: y: " + str(lowerLeftY))
+    print("True lowerRightX: x: " + str(lowerRightX))
+    print("True lowerRightY: y: " + str(lowerRightY))
+    print("True upperRightX: x: " + str(upperRightX))
+    print("True upperRightY: y: " + str(upperRightY))
+
+    upperLeft = [upperLeftX, upperLeftY]
+    upperRight = [upperRightX, upperRightY]
+    lowerLeft = [lowerLeftX, lowerLeftY]
+    lowerRight = [lowerRightX, lowerRightY]
+
+    xLength = lowerLeftX - lowerRightX
+    yLength = upperLeftY - lowerLeftY
+    xDiff = xLength / 6
+    xp1 = lowerRightX + xDiff # Roughly 22% y distortion
+    # (289.5, 121)
+    xp2 = lowerRightX + 2*xDiff # Roughly 33% y distortion
+    # (472, 106)
+    xp3 = lowerRightX + 3*xDiff # Roughly 37% y distortion 
+    # (654.5, 101) 
+    xp4 = lowerRightX + 4*xDiff # Roughtly 33% y distortion
+    # (837, 108) 
+    xp5 = lowerRightX + 5*xDiff # Roughly 22% y distortion
+    # (1019.5, 122)
+
+    p1 = [xp1, lowerLeftY - yLength*0.30]
+    p2 = [xp2, lowerLeftY - yLength*0.40]
+    p3 = [xp3, lowerLeftY - yLength*0.44]
+    p4 = [xp4, lowerLeftY - yLength*0.40]
+    p5 = [xp5, lowerLeftY - yLength*0.28]
+    
+    #p6 = [xp1, upperLeftY - yLength*0.17]
+    #p7 = [xp2, upperLeftY - yLength*0.21]
+    #p8 = [xp3, upperLeftY - yLength*0.26]
+    #p9 = [xp4, upperLeftY - yLength*0.21]
+    #p0 = [xp5, upperLeftY - yLength*0.17]
+
+    perimeter = [np.array([[upperLeftX, upperLeftY + 5], [upperRightX, upperRightY + 5], lowerRight, p1, p2, p3, p4, p5, lowerLeft], dtype=np.int32)]
+    #np.save("perimeter.npy", perimeter)
+
+    perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3)
+    # Showing the output, debugging purposes
+    #cv2.imshow("Perimeter Output", perimOutput)  # removed for console mode
+      
+    # Find Black Key Contours
+    # https://techvidvan.com/tutorials/detect-objects-of-similar-color-using-opencv-in-python/
+    # convert to hsv colorspace
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    
+    # lower bound and upper bound for Black color, assuming white background
+    lower_bound = np.array([0, 0, 0])   
+    upper_bound = np.array([160, 160, 90])
+    
+    # find the colors within the boundaries
+    mask = cv2.inRange(hsv, lower_bound, upper_bound)
+    
+    #define kernel size, 3x3 for low res black keys  
+    kernel = np.ones((3,3),np.uint8)
+    
+    # Remove unnecessary noise from mask
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    
+    # Segment only the detected region
+    segmented_img = cv2.bitwise_and(img, img, mask=mask)
+    
+    # Find contours from the mask
+    contours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Determining if contours are within the perimeter of the keyboard, have sufficient area
+    blackKeys = []
+    for blackKey in contours:
+        sampPoint = (int(blackKey[0][0][0]), int(blackKey[0][0][1]))
+        inContour = cv2.pointPolygonTest(perimeter[0], sampPoint, False)
+        if(inContour >= 0):
+            if(cv2.contourArea(blackKey) > blackKeyMinArea):
+                blackKeys.append(blackKey)
+    # Checking if correct number of key contours were found
+    print(len(blackKeys))
+    if(len(blackKeys) != 36):
+        output = cv2.drawContours(segmented_img, blackKeys, -1, (0, 0, 255), 3)
+        #cv2.imshow("Black Key Output", output)  # removed for console mode
+        BleTransmitError(7)
+        print("***Error Occured*** Black Key Detection Error") # Black Key Detection Error
+        return [0],[0],[0]
+    else:
+        # Normalizing array of black keys
+        normalizedBlackKeys = sorted(blackKeys, key=lambda x: x[0][0][0], reverse=True)
+
+        output = cv2.drawContours(segmented_img, normalizedBlackKeys, -1, (0, 0, 255), 3)
+    
+        # Showing the output, debugging purposes
+        #cv2.imshow("Black Key Output", output)  # removed for console mode
+        
+        whiteKeyBoundaries = [0] * 51
+        blackKeyGivens = [0, 2, 3, 5, 6, 7, 9, 10, 12, 13, 14, 16, 17, 19, 20, 21, 23, 24, 26, 27, 28, 30, 31, 33, 34, 35, 37, 38, 40, 41, 42, 44, 45, 47, 48, 49]
+        
+        # Determining white key pixel boundaries based on black key contours
+        iterator = 0
+        for key in normalizedBlackKeys:
+            maxX = 0
+            minX = 0
+            for coord in key:
+                if(maxX == 0):
+                    maxX = coord[0][0]
+                    minX = coord[0][0]
+                if(coord[0][0] > maxX):
+                    maxX = coord[0][0]
+                elif(coord[0][0] < minX):
+                    minX = coord[0][0]
+            xp = (maxX + minX)/2
+            whiteKeyIndex = blackKeyGivens[iterator]
+            whiteKeyBoundaries[whiteKeyIndex] = xp
+            iterator += 1
+        
+        # Determining remaining white key pixel boundaries by averaging known locations
+        iterator = 0
+        for bound in whiteKeyBoundaries:
+            if(iterator != 50 and bound == 0):
+                whiteKeyBoundaries[iterator] = (whiteKeyBoundaries[iterator - 1] + whiteKeyBoundaries[iterator + 1])/2
+            iterator += 1
+        whiteKeyBoundaries[50] = (whiteKeyBoundaries[49] + lowerRightX)/2
+        
+        # Determining bottom points of white key contours
+        bottomWhiteKeyCoordinates = []
+        for i in range(0, 53):
+            if(i == 0):
+                bottomWhiteKeyCoordinates.append([upperLeftX, upperRightY])
+            elif(i == 52):
+                bottomWhiteKeyCoordinates.append([upperRightX, upperRightY])
+            else:
+                bottomWhiteKeyCoordinates.append([whiteKeyBoundaries[i - 1], upperRightY])
+        
+        # Determining top points of white key contours
+        topWhiteKeyCoordinates = []
+        for j in range(0, 53):
+            if(j == 0):
+                topWhiteKeyCoordinates.append([lowerLeftX, lowerRightY])
+            elif(j == 52):
+                topWhiteKeyCoordinates.append([lowerRightX, lowerRightY])
+            else:
+                baseline = int(lowerRightY) + 5
+                while True:
+                    sampPoint = (int(whiteKeyBoundaries[j - 1]), baseline)
+                    inContour = cv2.pointPolygonTest(perimeter[0], sampPoint, False)
+                    if(inContour == 1):
+                        baseline = baseline - 1
+                    else:
+                        break
+                topWhiteKeyCoordinates.append([whiteKeyBoundaries[j - 1], baseline])
+        
+        # Drawing white key contours
+        whiteKeys = []
+        for k in range(0, 52):
+            whiteKeys.append(np.array([topWhiteKeyCoordinates[k], topWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k]], dtype=np.int32))
+
+        # Brightness Adjustment of Sample Image
         #for row in img:
         #    for col in row:
         #        col[1] = col[1] - 70
 
-        perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3)
+        whiteKeyOutput = cv2.drawContours(img, whiteKeys, -1, (0, 0, 255), 3)
         # Showing the output, debugging purposes
-        #cv2.imshow("Perimeter Output", perimOutput)  # removed for console mode
-
-        # Brightness Adjustment of Sample Image, debugging
-        #for row in img:
-        #    for col in row:
-        #        col[1] = col[1] + 70
-
-        # White keys (based on sample image):
-        # Key 1: x: 1183-1202 (19)
-        # Key 3: x: 1168-1183 (15)
-        # Key 4: x: 1153-1168 (15)
-        # Key 6: x: 1137-1153 (16)
-        # Key 8: x: 1120-1137 (18)
-        # Key 9: x: 1102-1120 (18)
-        # Key 11: x: 1084-1102 (18)
-        # Key 13: x: 1066-1084 (18)
-        # Key 15: x: 1046-1066 (20)
-        # Key 16: x: 1026-1046 (20)
-        # Key 18: x: 1006-1026 (20)
-        # Key 20: x: 985-1006 (21)
-        # Key 21: x: 964-985 (21)
-        # Key 23: x: 942-964 (22)
-        # Key 25: x: 919-942 (23)
-        # Key 27: x: 896-919 (23)
-        # Key 28: x: 873-896 (23)
-        # Key 30: x: 848-873 (25)
-        # Key 32: x: 824-848 (24)
-        # Key 33: x: 800-824 (24)
-        # Key 35: x: 775-800 (25)
-        # Key 37: x: 749-775 (26)
-        # Key 39: x: 724-749 (25)
-        # Key 40: x: 699-724 (25)
-        # Key 42: x: 675-699 (24)
-        # Key 44: x: 649-675 (26)
-        # Key 45: x: 623-649 (26)
-        # Key 47: x: 598-623 (25)
-        # Key 49: x: 572-598 (27)
-        # Key 51: x: 547-572 (25)
-        # Key 52: x: 522-547 (25)
-        # Key 54: x: 497-522 (25)
-          
-        # Find Black Key Contours
-        # https://techvidvan.com/tutorials/detect-objects-of-similar-color-using-opencv-in-python/
-        # convert to hsv colorspace
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        #cv2.imshow("White Key Output", whiteKeyOutput)  # removed for console mode
         
-        # lower bound and upper bound for Black color, assuming white background
-        lower_bound = np.array([0, 0, 0])   
-        upper_bound = np.array([160, 160, 90])
-        
-        # find the colors within the boundaries
-        mask = cv2.inRange(hsv, lower_bound, upper_bound)
-        
-        #define kernel size, 3x3 for low res black keys  
-        kernel = np.ones((3,3),np.uint8)
-        
-        # Remove unnecessary noise from mask
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        
-        # Segment only the detected region
-        segmented_img = cv2.bitwise_and(img, img, mask=mask)
-        
-        # Find contours from the mask
-        contours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        # Determining if contours are within the perimeter of the keyboard, have sufficient area
-        blackKeys = []
-        for blackKey in contours:
-            sampPoint = (int(blackKey[0][0][0]), int(blackKey[0][0][1]))
-            inContour = cv2.pointPolygonTest(perimeter[0], sampPoint, False)
-            if(inContour >= 0):
-                if(cv2.contourArea(blackKey) > blackKeyMinArea):
-                    blackKeys.append(blackKey)
-        # Checking if correct number of key contours were found
-        print(len(blackKeys))
-        if(len(blackKeys) != 36):
-            output = cv2.drawContours(segmented_img, blackKeys, -1, (0, 0, 255), 3)
-            #cv2.imshow("Black Key Output", output)  # removed for console mode
-            BleTransmitError(7)
-            print("***Error Occured*** Black Key Detection Error") # Black Key Detection Error
-            return [0],[0],[0]
-        else:
-            # Normalizing array of black keys
-            normalizedBlackKeys = sorted(blackKeys, key=lambda x: x[0][0][0], reverse=True)
-
-            output = cv2.drawContours(segmented_img, normalizedBlackKeys, -1, (0, 0, 255), 3)
-        
-            # Showing the output, debugging purposes
-            #cv2.imshow("Black Key Output", output)  # removed for console mode
-            
-            whiteKeyBoundaries = [0] * 51
-            blackKeyGivens = [0, 2, 3, 5, 6, 7, 9, 10, 12, 13, 14, 16, 17, 19, 20, 21, 23, 24, 26, 27, 28, 30, 31, 33, 34, 35, 37, 38, 40, 41, 42, 44, 45, 47, 48, 49]
-            
-            # Determining white key pixel boundaries based on black key contours
-            iterator = 0
-            for key in normalizedBlackKeys:
-                maxX = 0
-                minX = 0
-                for coord in key:
-                    if(maxX == 0):
-                        maxX = coord[0][0]
-                        minX = coord[0][0]
-                    if(coord[0][0] > maxX):
-                        maxX = coord[0][0]
-                    elif(coord[0][0] < minX):
-                        minX = coord[0][0]
-                xp = (maxX + minX)/2
-                whiteKeyIndex = blackKeyGivens[iterator]
-                whiteKeyBoundaries[whiteKeyIndex] = xp
-                iterator += 1
-            
-            # Determining remaining white key pixel boundaries by averaging known locations
-            iterator = 0
-            for bound in whiteKeyBoundaries:
-                if(iterator != 50 and bound == 0):
-                    whiteKeyBoundaries[iterator] = (whiteKeyBoundaries[iterator - 1] + whiteKeyBoundaries[iterator + 1])/2
-                iterator += 1
-            whiteKeyBoundaries[50] = (whiteKeyBoundaries[49] + lowerRightX)/2
-            
-            # Determining bottom points of white key contours
-            bottomWhiteKeyCoordinates = []
-            for i in range(0, 53):
-                if(i == 0):
-                    bottomWhiteKeyCoordinates.append([upperLeftX, upperRightY])
-                elif(i == 52):
-                    bottomWhiteKeyCoordinates.append([upperRightX, upperRightY])
-                else:
-                    bottomWhiteKeyCoordinates.append([whiteKeyBoundaries[i - 1], upperRightY])
-            
-            # Determining top points of white key contours
-            topWhiteKeyCoordinates = []
-            for j in range(0, 53):
-                if(j == 0):
-                    topWhiteKeyCoordinates.append([lowerLeftX, lowerRightY])
-                elif(j == 52):
-                    topWhiteKeyCoordinates.append([lowerRightX, lowerRightY])
-                else:
-                    baseline = int(lowerRightY) + 5
-                    while True:
-                        sampPoint = (int(whiteKeyBoundaries[j - 1]), baseline)
-                        inContour = cv2.pointPolygonTest(perimeter[0], sampPoint, False)
-                        if(inContour == 1):
-                            baseline = baseline - 1
-                        else:
-                            break
-                    topWhiteKeyCoordinates.append([whiteKeyBoundaries[j - 1], baseline])
-            
-            # Drawing white key contours
-            whiteKeys = []
-            for k in range(0, 52):
-                whiteKeys.append(np.array([topWhiteKeyCoordinates[k], topWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k]], dtype=np.int32))
-
-            # Brightness Adjustment of Sample Image
-            #for row in img:
-            #    for col in row:
-            #        col[1] = col[1] - 70
-
-            whiteKeyOutput = cv2.drawContours(img, whiteKeys, -1, (0, 0, 255), 3)
-            # Showing the output, debugging purposes
-            #cv2.imshow("White Key Output", whiteKeyOutput)  # removed for console mode
-            
-            return whiteKeys, normalizedBlackKeys, whiteKeyBoundaries
+        return whiteKeys, normalizedBlackKeys, whiteKeyBoundaries
             
         
 
@@ -799,12 +757,25 @@ class handDetector():
             else:
                 myHand1 = self.results.multi_hand_landmarks[0]
                 myHand2 = self.results.multi_hand_landmarks[1]
+                leftHand1 = False
+                leftHand2 = False
+                pinkyKnuckle1 = myHand1.landmark[17]
+                pointerKnuckle1 = myHand1.landmark[5]
+                pinkyKnuckle2 = myHand2.landmark[17]
+                pointerKnuckle2 = myHand2.landmark[5]
+                if(pinkyKnuckle1.x > pointerKnuckle1.x):
+                    leftHand1 = True
+                if(pinkyKnuckle2.x > pointerKnuckle2.x):
+                    leftHand2 = True
                 for i in range(1, 6):
                     lm = myHand1.landmark[i*4]
                     h, w, c = img.shape
                     cx, cy = int(lm.x * w), int(lm.y * h)
                     # 1 in index 0 indicates left hand
-                    lmList.append([1, i*4, cx, cy])
+                    if leftHand1:
+                        lmList.append([1, i*4, cx, cy])
+                    else:
+                        lmList.append([2, i*4, cx, cy])
                     if draw:
                         cv2.circle(img, (cx, cy), 3, (255, 0, 255), cv2.FILLED)
                 for i in range(1, 6):
@@ -812,24 +783,28 @@ class handDetector():
                     h, w, c = img.shape
                     cx, cy = int(lm.x * w), int(lm.y * h)
                     # 2 in index 0 indicates right hand
-                    lmList.append([2, i*4, cx, cy])
+                    if leftHand2:
+                        lmList.append([1, i*4, cx, cy])
+                    else:
+                        lmList.append([2, i*4, cx, cy])
                     if draw:
                         cv2.circle(img, (cx, cy), 3, (255, 0, 255), cv2.FILLED)
         return lmList 
 
 # Interrupt function, transmits the data in currentlmLocations to the MCU at ~10 Hz
-def BleTransmit(currentlmLocations):
+def BleTransmit(currentlmLocations, btcnt):
     toTransmit = ''
     print(currentlmLocations)
     #"""
     for lm in currentlmLocations:
         toTransmit += chr(lm)
     toTransmit = bytes(toTransmit, "utf-8")
-    try:
-        BLEVar.write(toTransmit)
-    except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        GPIO.output(18, 0)
-        establishBLE()
+    if(True or btcnt % 3 != 0): # TODO: can delete this delay
+        try:
+            BLEVar.write(toTransmit)
+        except (btle.BTLEDisconnectError, btle.BTLEInternalError):
+            GPIO.output(18, 0)
+            establishBLE()
     #"""
 
 # Called upon to transmit an error packet in the event of a calibration error
@@ -907,19 +882,15 @@ def main():
     GPIO.output(18, 0) # Ensure blue LED is off
     establishBLE()
     
-    # Bluetooth Error Code Testing
-    #BleTransmitError(0)
-    #BleTransmitError(1)
-    
     # Camera Initialization
     cap = initCamera()
 
     # Expected Key Location Generation
     white, black, whiteKeyBoundaries = expectedKeyGeneration(cap)
-    if(len(white) == 1):
+    while len(white) == 1:
         white, black, whiteKeyBoundaries = expectedKeyGeneration(cap)
-    else:
-        print("Expected Keyboard Generation Complete")
+
+    print("Expected Keyboard Generation Complete")
 
     # Variable Initializations
     pTime = 0
@@ -930,6 +901,7 @@ def main():
     detector = handDetector()
     
     # Main processing loop
+    btcnt = 0
     while True:
         # Reading of camera, finding position of hands/fingers
         success, img = cap.read()
@@ -952,7 +924,8 @@ def main():
             currentlmLocations = matchLocations(white, black, whiteKeyBoundaries, lmList)
             
             # BLE Transmission Logic
-            threading.Timer(0, lambda: BleTransmit(currentlmLocations)).start()
+            threading.Timer(0, lambda: BleTransmit(currentlmLocations, btcnt)).start()
+            btcnt = btcnt + 1
             
             # Computer vision pipeline output, mainly for debugging purposes
             #cv2.imshow("Image", img)  # removed for console mode

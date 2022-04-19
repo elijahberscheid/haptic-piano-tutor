@@ -97,8 +97,9 @@ def tapeCalibration(img):
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         
         # lower bound and upper bound for Green color
-        lower_bound = np.array([60, 115, 60])   
-        upper_bound = np.array([100, 255, 255])
+        # Design studio values
+        lower_bound = np.array([40, 140, 15])   
+        upper_bound = np.array([120, 255, 255])
         
         # Values for Sample Image (ECE 477 Lab Setting)
         #lower_bound = np.array([60, 115, 60])   
@@ -128,6 +129,8 @@ def tapeCalibration(img):
         
         # Determining which contours correspond to the tape
         # Algorithm for Tape Detection v2:
+        print("Con len")
+        print(len(contours))
         if(len(contours) < 4):
             BleTransmitError(1)
             print("***Error Occured*** tapeCalibration Tape Detection Error Type 1") # Contours not detected, USB Camera or landmarks hidden
@@ -417,7 +420,7 @@ def expectedKeyGeneration(cap):
         
         # lower bound and upper bound for Black color, assuming white background
         lower_bound = np.array([0, 0, 0])   
-        upper_bound = np.array([160, 160, 90])
+        upper_bound = np.array([160, 160, 130])
         
         # find the colors within the boundaries
         mask = cv2.inRange(hsv, lower_bound, upper_bound)

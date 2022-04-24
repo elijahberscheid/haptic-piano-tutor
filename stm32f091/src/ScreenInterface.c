@@ -130,8 +130,8 @@ static const char *stateStringTable[] = {
 
 // TODO: does not make sense to store song names here, store them with the songs instead
 static const char *songNameStringTable[] = {
-    "Mary Had A Little Lamb",
     "C Major Scale",
+    "Mary Had A Little Lamb",
     "Canon in D"
 };
 

@@ -1,44 +1,6 @@
 #include <stdlib.h>
 #include "Song.h"
 
-static const Note_t maryHadALittleLamb1[] = {
-    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
-    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
-    { .key = Key_C4, .length = NoteLength_Quarter, .finger = Finger_Right1 },
-    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
-
-    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
-    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
-    { .key = Key_E4, .length = NoteLength_Half, .finger = Finger_Right3 },
-
-    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
-    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
-    { .key = Key_D4, .length = NoteLength_Half, .finger = Finger_Right2 },
-
-    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
-    { .key = Key_G4, .length = NoteLength_Quarter, .finger = Finger_Right5 },
-    { .key = Key_G4, .length = NoteLength_Half, .finger = Finger_Right5 },
-
-    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
-    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
-    { .key = Key_C4, .length = NoteLength_Quarter, .finger = Finger_Right1 },
-    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
-
-    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
-    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
-    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
-    { .key = Key_C4, .length = NoteLength_Quarter, .finger = Finger_Right1 },
-
-    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
-    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
-    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
-    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
-
-    { .key = Key_C4, .length = NoteLength_Whole, .finger = Finger_Right1 },
-
-    { .key = Key_Invalid, .length = 0, .finger = 0 }
-};
-
 static const Note_t cMajorScale1[] = {
     { .key = Key_C3, .length = NoteLength_Quarter, .finger = Finger_Left5 },
     { .key = Key_D3, .length = NoteLength_Quarter, .finger = Finger_Left4 },
@@ -77,6 +39,44 @@ static const Note_t cMajorScale2[] = {
     { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
     { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
     { .key = Key_C4, .length = NoteLength_Quarter, .finger = Finger_Right1 },
+
+    { .key = Key_Invalid, .length = 0, .finger = 0 }
+};
+
+static const Note_t maryHadALittleLamb1[] = {
+    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
+    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
+    { .key = Key_C4, .length = NoteLength_Quarter, .finger = Finger_Right1 },
+    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
+
+    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
+    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
+    { .key = Key_E4, .length = NoteLength_Half, .finger = Finger_Right3 },
+
+    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
+    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
+    { .key = Key_D4, .length = NoteLength_Half, .finger = Finger_Right2 },
+
+    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
+    { .key = Key_G4, .length = NoteLength_Quarter, .finger = Finger_Right5 },
+    { .key = Key_G4, .length = NoteLength_Half, .finger = Finger_Right5 },
+
+    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
+    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
+    { .key = Key_C4, .length = NoteLength_Quarter, .finger = Finger_Right1 },
+    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
+
+    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
+    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
+    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
+    { .key = Key_C4, .length = NoteLength_Quarter, .finger = Finger_Right1 },
+
+    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
+    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
+    { .key = Key_E4, .length = NoteLength_Quarter, .finger = Finger_Right3 },
+    { .key = Key_D4, .length = NoteLength_Quarter, .finger = Finger_Right2 },
+
+    { .key = Key_C4, .length = NoteLength_Whole, .finger = Finger_Right1 },
 
     { .key = Key_Invalid, .length = 0, .finger = 0 }
 };
@@ -365,7 +365,7 @@ static const Note_t canonD3[] = {
 };
 
 const Song_t Song_songs[] = { // Update Song_NumberOfSongs when changing this array
-    { .channels = { maryHadALittleLamb1, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
     { .channels = { cMajorScale1, cMajorScale2, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { .channels = { maryHadALittleLamb1, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
     { .channels = { canonD1, canonD2, canonD3, NULL, NULL, NULL, NULL, NULL } }
 };

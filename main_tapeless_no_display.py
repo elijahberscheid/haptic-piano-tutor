@@ -18,10 +18,6 @@ import numpy as np
 # Prerequisites: sudo apt-get install libglib2.0-dev; sudo pip install bluepy
 # References: https://elinux.org/RPi_Bluetooth_LE, https://ianharvey.github.io/bluepy-doc/
 from bluepy import btle
-# Prerequisites: sudo pip install RPi.GPIO
-# References: https://pypi.org/project/RPi.GPIO/ 
-import RPi.GPIO as GPIO
-
 
 # Assuming a height of 35" from piano keyboard to camera lens
 # Camera is expected 
@@ -49,12 +45,10 @@ def establishBLE():
             writeCharacteristic = passthroughService.getCharacteristics(writeUuid)[0]
             global BLEVar
             BLEVar = writeCharacteristic
-            GPIO.output(18, 1) # Pin 18 (Blue LED) on
             print("Pairing Successful")
             loopVar = False
         except btle.BTLEDisconnectError:
             print("Connection Attempt " + str(atm) + " Failed")
-            GPIO.output(18, 0) # Pin 18 (Blue LED) off
         atm += 1
 
 
@@ -169,14 +163,19 @@ class handDetector():
 
 def perimeterHelper(cap, detector, rightHand):
     coords = []
-    timerCount = 10
+    timerCount = 5
     failCount = 0
     xSum = 0
     ySum = 0
+    for _ in range(10):
+       success, img = cap.read()
+       if(np.size(img) > 0):
+           img = detector.findHands(img)
+           lmList = detector.findPosition(img)   
     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')    
     print('%%              HOLD FINGER UNTIL TIMER IS COMPLETE            %%')
-    print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+    print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')  
     while timerCount > 0:
         success, img = cap.read()
         lmFound = False
@@ -186,24 +185,26 @@ def perimeterHelper(cap, detector, rightHand):
             if(rightHand):
                 for lmCoord in lmList:
                     # right pointer fingertip
-                    if(lmCoord[1] == 8 and lmCoord[0] == 2):
+                    if(lmCoord[1] == 8 and lmCoord[0] == 2 and lmCoord[2] < 200):
                         xSum = xSum + lmCoord[2]
+                        print(lmCoord[3])
                         ySum = ySum + lmCoord[3]
                         lmFound = True
                         failCount = 0
             else:
                 for lmCoord in lmList:
                     # left pointer fingertip
-                    if(lmCoord[1] == 8 and lmCoord[0] == 1):
+                    if(lmCoord[1] == 8 and lmCoord[0] == 1 and lmCoord[2] > 1100 and lmCoord[2] < 1300):
                         xSum = xSum + lmCoord[2]
+                        print(lmCoord[3])
                         ySum = ySum + lmCoord[3]
                         lmFound = True
                         failCount = 0
             if(lmFound):
-                if(timerCount == 10):
-                    print('%%                                ' + str(timerCount) + '                            %%')
+                if(timerCount >= 10):
+                    print('%%                               ' + str(timerCount) + '                            %%')
                 else:
-                    print('%%                                 ' + str(timerCount) + '                            %%')    
+                    print('%%                                ' + str(timerCount) + '                            %%')    
                 print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
                 timerCount = timerCount - 1
                 time.sleep(1)
@@ -218,8 +219,8 @@ def perimeterHelper(cap, detector, rightHand):
     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
     time.sleep(0.5)                                
-    coords.append(xSum/10)
-    coords.append(ySum/10)
+    coords.append(xSum/5)
+    coords.append(ySum/5)
     print('\n' * 500)
     return coords
 
@@ -316,7 +317,7 @@ def blackKeyGeneration(cap, perimeter):
     
     # lower bound and upper bound for Black color, assuming white background
     lower_bound = np.array([0, 0, 0])   
-    upper_bound = np.array([160, 160, 90])
+    upper_bound = np.array([160, 160, 130])
     
     # find the colors within the boundaries
     mask = cv2.inRange(hsv, lower_bound, upper_bound)
@@ -347,8 +348,9 @@ def blackKeyGeneration(cap, perimeter):
     print("Black Keys Detected: " + str(len(blackKeys)))
 
     if(len(blackKeys) != 36):
-        #output = cv2.drawContours(segmented_img, blackKeys, -1, (0, 0, 255), 3) # removed for console mode
-        #cv2.imshow("Failed Black Key Output", output)  # removed for console mode
+        output = cv2.drawContours(segmented_img, blackKeys, -1, (0, 0, 255), 3) # removed for console mode
+        cv2.imshow("Failed Black Key Output", output)  # removed for console mode
+        cv2.waitKey(1)
         print("***Error Occured*** Black Key Detection Error") # Black Key Detection Error
     return blackKeys, segmented_img
 
@@ -360,9 +362,20 @@ def expectedKeyGeneration(cap, detector):
     # Perimeter Calibration
     perimeterArray = [0, 0, 0, 0, 0, 0, 0, 0]
     perimeterResponse = "no"
+    lowerLeftX = 0
+    lowerLeftY = 0
+    upperLeftX = 0
+    upperLeftY = 0
+    lowerRightX = 0
+    lowerRightY = 0
+    upperRightX = 0
+    upperRightY = 0
+
     while(perimeterResponse != "yes" and perimeterResponse != "YES"):
         perimeterArray = touchPerimeter(cap, detector)
-    
+        for i in range(len(perimeterArray)):
+            perimeterArray[i] = int(perimeterArray[i])
+        
         success, img = cap.read()
         while(np.size(img) == 0):
             success, img = cap.read()
@@ -376,15 +389,28 @@ def expectedKeyGeneration(cap, detector):
         print('%%                        TYPE no OTHERWISE                    %%')
         print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
         print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-        cv2.circle(img, (perimeterArray[0], perimeterArray[1]), 3, (255, 0, 255), cv2.FILLED)
-        cv2.circle(img, (perimeterArray[2], perimeterArray[3]), 3, (255, 0, 255), cv2.FILLED)
-        cv2.circle(img, (perimeterArray[4], perimeterArray[5]), 3, (255, 0, 255), cv2.FILLED)
-        cv2.circle(img, (perimeterArray[6], perimeterArray[7]), 3, (255, 0, 255), cv2.FILLED)
-        cv2.imshow("Perimeter Calibration Image", img)
-        cv2.waitKey(1)
+        
+        lowerLeftX = perimeterArray[2]
+        lowerLeftY = perimeterArray[3]
+        upperLeftX = perimeterArray[0]
+        upperLeftY = perimeterArray[1]
+        lowerRightX = perimeterArray[4]
+        lowerRightY = perimeterArray[5]
+        upperRightX = perimeterArray[6]
+        upperRightY = perimeterArray[7]
+    
+        print("Upper Left X: " + str(upperLeftX))
+        print("Upper Left Y: " + str(upperLeftY))
+        print("Lower Left X: " + str(lowerLeftX))
+        print("Lower Left Y: " + str(lowerLeftY))
+        print("Lower Right X: " + str(lowerRightX))
+        print("Lower Right Y: " + str(lowerRightY))
+        print("Upper Right X: " + str(upperRightX))
+        print("Upper Right Y: " + str(upperRightY))
+
         perimeterResponse = input()
     print('\n' * 500)
-
+      
     # perimeterArray: [upperLeftx, upperLefty, lowerLeftx, lowerLefty, lowerRightx, lowerRighty, upperRightx, upperRighty]
     # Define perimeter corner coordinates:
     lowerLeftX = perimeterArray[2]
@@ -418,8 +444,9 @@ def expectedKeyGeneration(cap, detector):
     
     perimeter = [np.array([[upperLeftX, upperLeftY + 5], [upperRightX, upperRightY + 5], lowerRight, p1, p2, p3, p4, p5, lowerLeft], dtype=np.int32)]
 
-    #perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3) # removed for console mode
-    #cv2.imshow("Perimeter Output", perimOutput)  # removed for console mode
+    perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3) 
+    cv2.imshow("Perimeter Output", perimOutput)  
+    cv2.waitKey(1)      
       
     # Finding the Black Key Contours
     blackKeys, segmented_img = blackKeyGeneration(cap, perimeter)
@@ -720,7 +747,6 @@ def BleTransmit(currentlmLocations):
     try:
         BLEVar.write(toTransmit)
     except (btle.BTLEDisconnectError, btle.BTLEInternalError):
-        GPIO.output(18, 0)
         establishBLE()
     #"""
         
@@ -728,18 +754,17 @@ def BleTransmit(currentlmLocations):
 # Main function
 def main():
     # Bluetooth Initialization 
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(18, GPIO.OUT)
-    GPIO.output(18, 0) # Ensure blue LED is off
     establishBLE()
     
     # Camera Initialization
     cap = initCamera()
     print("Camera Initialization Complete")
+    time.sleep(2)
 
     # Mediapipe Initialization
     detector = handDetector()
     print("Mediapipe Initialization Complete")
+    time.sleep(2)
 
     # Expected Key Location Generation
     white, black, whiteKeyBoundaries = expectedKeyGeneration(cap, detector)

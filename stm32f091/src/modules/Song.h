@@ -6,7 +6,7 @@
 
 enum {
     Song_MaxConcurrentNotes = 8,
-    Song_NumberOfSongs = 2
+    Song_NumberOfSongs = 3
 };
 
 typedef struct {

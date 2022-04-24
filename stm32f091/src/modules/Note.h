@@ -140,6 +140,7 @@ enum {
     NoteLength_Sixteeth = 4,
     NoteLength_Eighth = 8,
     NoteLength_Quarter = 16,
+    NoteLength_DottedQuarter = 24,
     NoteLength_Half = 32,
     NoteLength_Whole = 64
 };

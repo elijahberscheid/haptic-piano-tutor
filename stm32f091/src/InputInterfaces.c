@@ -5,6 +5,7 @@
 #include <string.h>
 #include "InputInterfaces.h"
 #include "modules/GlobalVariables.h"
+#include "modules/Note.h"
 
 #define MODER_INPUT (0x0)
 #define MODER_OUTPUT (0x1)
@@ -209,13 +210,19 @@ void Ble_Run(void) {
             GlobalVariables_Write(Global_ErrorCode, &errorCode);
             bool error = true;
             GlobalVariables_Write(Global_CalibrationError, &error);
+
+            Key_t positions[] = {
+                Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid,
+                Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid
+            };
+            GlobalVariables_Write(Global_FingerPositions, positions);
         }
         else if (strncmp("TTM", instance.rxBuffer, strlen("TTM")) != 0) {
             // if the data received is not a configuration string, then it must be finger positions
             // if finger positions are received, then there is no error
             bool error = false;
             GlobalVariables_Write(Global_CalibrationError, &error);
-            GlobalVariables_Write(Global_FingerPositions, &instance.rxBuffer);
+            GlobalVariables_Write(Global_FingerPositions, instance.rxBuffer);
         }
     }
 }
@@ -225,6 +232,12 @@ void Ble_Init(void) {
     instance.txMessageLength = 0;
     instance.txIndex = 0;
     memset(instance.rxBuffer, 0, RxBufferLength * sizeof(*instance.rxBuffer));
+
+    Key_t positions[] = {
+        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid,
+        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid
+    };
+    GlobalVariables_Write(Global_FingerPositions, positions);
 
     // configure port B
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;

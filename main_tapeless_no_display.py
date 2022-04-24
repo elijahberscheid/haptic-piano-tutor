@@ -187,7 +187,6 @@ def perimeterHelper(cap, detector, rightHand):
                     # right pointer fingertip
                     if(lmCoord[1] == 8 and lmCoord[0] == 2 and lmCoord[2] < 200):
                         xSum = xSum + lmCoord[2]
-                        print(lmCoord[3])
                         ySum = ySum + lmCoord[3]
                         lmFound = True
                         failCount = 0
@@ -196,7 +195,6 @@ def perimeterHelper(cap, detector, rightHand):
                     # left pointer fingertip
                     if(lmCoord[1] == 8 and lmCoord[0] == 1 and lmCoord[2] > 1100 and lmCoord[2] < 1300):
                         xSum = xSum + lmCoord[2]
-                        print(lmCoord[3])
                         ySum = ySum + lmCoord[3]
                         lmFound = True
                         failCount = 0
@@ -348,8 +346,8 @@ def blackKeyGeneration(cap, perimeter):
     print("Black Keys Detected: " + str(len(blackKeys)))
 
     if(len(blackKeys) != 36):
-        output = cv2.drawContours(segmented_img, blackKeys, -1, (0, 0, 255), 3) # removed for console mode
-        cv2.imshow("Failed Black Key Output", output)  # removed for console mode
+        #output = cv2.drawContours(segmented_img, blackKeys, -1, (0, 0, 255), 3) # removed for console mode
+        #cv2.imshow("Failed Black Key Output", output)  # removed for console mode
         cv2.waitKey(1)
         print("***Error Occured*** Black Key Detection Error") # Black Key Detection Error
     return blackKeys, segmented_img
@@ -399,14 +397,14 @@ def expectedKeyGeneration(cap, detector):
         upperRightX = perimeterArray[6]
         upperRightY = perimeterArray[7]
     
-        print("Upper Left X: " + str(upperLeftX))
-        print("Upper Left Y: " + str(upperLeftY))
-        print("Lower Left X: " + str(lowerLeftX))
-        print("Lower Left Y: " + str(lowerLeftY))
-        print("Lower Right X: " + str(lowerRightX))
-        print("Lower Right Y: " + str(lowerRightY))
-        print("Upper Right X: " + str(upperRightX))
-        print("Upper Right Y: " + str(upperRightY))
+        print("Upper Left X: " + str(upperLeftX) + " [expected: 1100-1300]")
+        print("Upper Left Y: " + str(upperLeftY) + " [expected: 200-400]")
+        print("Lower Left X: " + str(lowerLeftX) + " [expected: 1100-1300]")
+        print("Lower Left Y: " + str(lowerLeftY) + " [expected: 0-200]")
+        print("Lower Right X: " + str(lowerRightX) + " [expected: 0-200]")
+        print("Lower Right Y: " + str(lowerRightY) + " [expected: 0-200]")
+        print("Upper Right X: " + str(upperRightX) + " [expected: 0-200]")
+        print("Upper Right Y: " + str(upperRightY) + " [expected: 200-400]")
 
         perimeterResponse = input()
     print('\n' * 500)
@@ -444,8 +442,8 @@ def expectedKeyGeneration(cap, detector):
     
     perimeter = [np.array([[upperLeftX, upperLeftY + 5], [upperRightX, upperRightY + 5], lowerRight, p1, p2, p3, p4, p5, lowerLeft], dtype=np.int32)]
 
-    perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3) 
-    cv2.imshow("Perimeter Output", perimOutput)  
+    #perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3) 
+    #cv2.imshow("Perimeter Output", perimOutput)  
     cv2.waitKey(1)      
       
     # Finding the Black Key Contours

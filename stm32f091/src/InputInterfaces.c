@@ -18,6 +18,8 @@ enum {
     ClockFrequency = 48000000,
     Prescaler = 48,
     RxBufferLength = 64,
+    DistanceArrayLength = 10,
+    LastPositionUseCountThreshold = 3,
     // If any of these pin numbers change, double check that it still uses the correct ISR
     // and double check the setup
     IntPin = 10,
@@ -56,6 +58,9 @@ volatile static bool modeButtonPressed = false;
 volatile static bool tempoButtonPressed = false;
 volatile static bool startButtonPressed = false;
 volatile static bool stopButtonPressed = false;
+
+static Key_t lastPositions[DistanceArrayLength];
+static uint8_t lastPositionUseCount[DistanceArrayLength];
 
 static void SetGpioMode(GPIO_TypeDef *port, uint8_t pin, uint8_t mode) {
     port->MODER &= ~(3 << (pin * 2)); // clear MODER for pin
@@ -222,7 +227,26 @@ void Ble_Run(void) {
             // if finger positions are received, then there is no error
             bool error = false;
             GlobalVariables_Write(Global_CalibrationError, &error);
-            GlobalVariables_Write(Global_FingerPositions, instance.rxBuffer);
+
+            Key_t positions[DistanceArrayLength];
+            GlobalVariables_Read(Global_FingerPositions, positions);
+            for (uint8_t finger = 0; finger < DistanceArrayLength; finger++) {
+                if (positions[finger] != Key_Invalid) {
+                    lastPositions[finger] = positions[finger];
+                    lastPositionUseCount[finger] = 0;
+                }
+
+                if ((instance.rxBuffer[finger] == Key_Invalid)
+                        && (lastPositionUseCount[finger] < LastPositionUseCountThreshold)) {
+                    positions[finger] = lastPositions[finger];
+                    lastPositionUseCount[finger]++;
+                }
+                else {
+                    positions[finger] = instance.rxBuffer[finger];
+                }
+            }
+
+            GlobalVariables_Write(Global_FingerPositions, positions);
         }
     }
 }
@@ -233,11 +257,11 @@ void Ble_Init(void) {
     instance.txIndex = 0;
     memset(instance.rxBuffer, 0, RxBufferLength * sizeof(*instance.rxBuffer));
 
-    Key_t positions[] = {
-        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid,
-        Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid, Key_Invalid
-    };
-    GlobalVariables_Write(Global_FingerPositions, positions);
+    for (uint8_t finger = 0; finger < DistanceArrayLength; finger++) {
+        lastPositions[finger] = Key_Invalid;
+        lastPositionUseCount[finger] = 0;
+    }
+    GlobalVariables_Write(Global_FingerPositions, lastPositions);
 
     // configure port B
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;

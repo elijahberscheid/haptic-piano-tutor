@@ -123,7 +123,7 @@ void TIM3_IRQHandler() {
             fingerHapticStates[i].dutyCycle = map(1, 50, 10, 20, absoluteDistance);
             fingerHapticStates[i].period = map(1, 50, 25, 30, absoluteDistance);
         } else { // finger is basically on top of key
-            fingerHapticStates[i].dutyCycle = 4;
+            fingerHapticStates[i].dutyCycle = 3;
             fingerHapticStates[i].period = 10;
             // Activate both motors
             fingerHapticStates[i].leftActive = 1;

@@ -59,7 +59,6 @@ volatile static bool tempoButtonPressed = false;
 volatile static bool startButtonPressed = false;
 volatile static bool stopButtonPressed = false;
 
-static Key_t lastPositions[DistanceArrayLength];
 static uint8_t lastPositionUseCount[DistanceArrayLength];
 
 static void SetGpioMode(GPIO_TypeDef *port, uint8_t pin, uint8_t mode) {
@@ -230,19 +229,15 @@ void Ble_Run(void) {
 
             Key_t positions[DistanceArrayLength];
             GlobalVariables_Read(Global_FingerPositions, positions);
-            for (uint8_t finger = 0; finger < DistanceArrayLength; finger++) {
-                if (positions[finger] != Key_Invalid) {
-                    lastPositions[finger] = positions[finger];
-                    lastPositionUseCount[finger] = 0;
-                }
 
-                if ((instance.rxBuffer[finger] == Key_Invalid)
-                        && (lastPositionUseCount[finger] < LastPositionUseCountThreshold)) {
-                    positions[finger] = lastPositions[finger];
-                    lastPositionUseCount[finger]++;
-                }
-                else {
+            for (uint8_t finger = 0; finger < DistanceArrayLength; finger++) {
+                if(instance.rxBuffer[finger] != Key_Invalid) {  // if new data is clean, use it immediately
                     positions[finger] = instance.rxBuffer[finger];
+                    lastPositionUseCount[finger] = 0;
+                } else if (lastPositionUseCount[finger] > LastPositionUseCountThreshold) {  // if new data is invalid but persistent, use it now
+                    positions[finger] = instance.rxBuffer[finger];
+                } else { // otherwise, just keep old positions
+                    lastPositionUseCount[finger]++;
                 }
             }
 
@@ -257,11 +252,12 @@ void Ble_Init(void) {
     instance.txIndex = 0;
     memset(instance.rxBuffer, 0, RxBufferLength * sizeof(*instance.rxBuffer));
 
+    Key_t positions[DistanceArrayLength];
     for (uint8_t finger = 0; finger < DistanceArrayLength; finger++) {
-        lastPositions[finger] = Key_Invalid;
+        positions[finger] = Key_Invalid;
         lastPositionUseCount[finger] = 0;
     }
-    GlobalVariables_Write(Global_FingerPositions, lastPositions);
+    GlobalVariables_Write(Global_FingerPositions, positions);
 
     // configure port B
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;

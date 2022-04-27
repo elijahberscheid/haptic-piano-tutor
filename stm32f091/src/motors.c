@@ -120,11 +120,11 @@ void TIM3_IRQHandler() {
                 }
             }
         } else if (absoluteDistance >= 1) { // finger is nearby key
-            fingerHapticStates[i].dutyCycle = 30; //3;//map(1, 50, 12, 40, absoluteDistance);   //30;
-            fingerHapticStates[i].period = 45;
+            fingerHapticStates[i].dutyCycle = map(1, 50, 10, 20, absoluteDistance);
+            fingerHapticStates[i].period = map(1, 50, 25, 30, absoluteDistance);
         } else { // finger is basically on top of key
-            fingerHapticStates[i].dutyCycle = 2;
-            fingerHapticStates[i].period = 9;
+            fingerHapticStates[i].dutyCycle = 4;
+            fingerHapticStates[i].period = 10;
             // Activate both motors
             fingerHapticStates[i].leftActive = 1;
             fingerHapticStates[i].rightActive = 1;

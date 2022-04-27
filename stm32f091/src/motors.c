@@ -77,6 +77,14 @@ static void setupTimer3() {
 }
 
 
+int map(int a, int b, int c, int d, int x) {
+    int scale = 12;
+    int y = (((d-c)<<scale)/(b-a))*((x)-a) + (c<<scale);
+    y = y >> scale;
+    return y;
+}
+
+
 void TIM3_IRQHandler() {
     TIM3->SR &= ~TIM_SR_UIF; // acknowledge interrupt
 
@@ -112,11 +120,11 @@ void TIM3_IRQHandler() {
                 }
             }
         } else if (absoluteDistance >= 1) { // finger is nearby key
-            fingerHapticStates[i].dutyCycle = 30;
-            fingerHapticStates[i].period = 50;
+            fingerHapticStates[i].dutyCycle = 30; //3;//map(1, 50, 12, 40, absoluteDistance);   //30;
+            fingerHapticStates[i].period = 45;
         } else { // finger is basically on top of key
-            fingerHapticStates[i].dutyCycle = 0;
-            fingerHapticStates[i].period = 50;
+            fingerHapticStates[i].dutyCycle = 2;
+            fingerHapticStates[i].period = 9;
             // Activate both motors
             fingerHapticStates[i].leftActive = 1;
             fingerHapticStates[i].rightActive = 1;

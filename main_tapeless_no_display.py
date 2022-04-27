@@ -163,7 +163,7 @@ class handDetector():
 
 def perimeterHelper(cap, detector, rightHand):
     coords = []
-    timerCount = 5
+    timerCount = 3
     failCount = 0
     xSum = 0
     ySum = 0
@@ -217,8 +217,8 @@ def perimeterHelper(cap, detector, rightHand):
     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
     time.sleep(0.5)                                
-    coords.append(xSum/5)
-    coords.append(ySum/5)
+    coords.append(xSum/3)
+    coords.append(ySum/3)
     print('\n' * 500)
     return coords
 
@@ -315,13 +315,13 @@ def blackKeyGeneration(cap, perimeter):
     
     # lower bound and upper bound for Black color, assuming white background
     lower_bound = np.array([0, 0, 0])   
-    upper_bound = np.array([160, 160, 130])
+    upper_bound = np.array([255, 255, 75])
     
     # find the colors within the boundaries
     mask = cv2.inRange(hsv, lower_bound, upper_bound)
     
     #define kernel size, 3x3 for low res black keys  
-    kernel = np.ones((3,3),np.uint8)
+    kernel = np.ones((4,4),np.uint8)
     
     # Remove unnecessary noise from mask
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
@@ -439,11 +439,17 @@ def expectedKeyGeneration(cap, detector):
     p3 = [xp3, lowerLeftY - yLength*0.44]
     p4 = [xp4, lowerLeftY - yLength*0.40]
     p5 = [xp5, lowerLeftY - yLength*0.28]
-    
-    perimeter = [np.array([[upperLeftX, upperLeftY + 5], [upperRightX, upperRightY + 5], lowerRight, p1, p2, p3, p4, p5, lowerLeft], dtype=np.int32)]
 
-    #perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3) 
-    #cv2.imshow("Perimeter Output", perimOutput)  
+    p6 = [xp1, upperLeftY - yLength*.20]
+    p7 = [xp2, upperLeftY - yLength*.25]
+    p8 = [xp3, upperLeftY - yLength*.30]
+    p9 = [xp4, upperLeftY - yLength*.25]
+    p10 = [xp5, upperLeftY - yLength*.20]
+    
+    perimeter = [np.array([[upperLeftX, upperLeftY + 5], p10, p9, p8, p7, p6, [upperRightX, upperRightY + 5], lowerRight, p1, p2, p3, p4, p5, lowerLeft], dtype=np.int32)]
+
+    perimOutput = cv2.drawContours(img, perimeter, -1, (0, 0, 255), 3) 
+    cv2.imshow("Perimeter Output", perimOutput)  
     cv2.waitKey(1)      
       
     # Finding the Black Key Contours
@@ -455,8 +461,8 @@ def expectedKeyGeneration(cap, detector):
     normalizedBlackKeys = sorted(blackKeys, key=lambda x: x[0][0][0], reverse=True)
    
     # Showing the output, debugging purposes
-    #output = cv2.drawContours(segmented_img, normalizedBlackKeys, -1, (0, 0, 255), 3) # removed for console mode
-    #cv2.imshow("Black Key Output", output)  # removed for console mode
+    output = cv2.drawContours(segmented_img, normalizedBlackKeys, -1, (0, 0, 255), 3) # removed for console mode
+    cv2.imshow("Black Key Output", output)  # removed for console mode
         
     whiteKeyBoundaries = [0] * 51
     blackKeyGivens = [0, 2, 3, 5, 6, 7, 9, 10, 12, 13, 14, 16, 17, 19, 20, 21, 23, 24, 26, 27, 28, 30, 31, 33, 34, 35, 37, 38, 40, 41, 42, 44, 45, 47, 48, 49]
@@ -491,10 +497,18 @@ def expectedKeyGeneration(cap, detector):
     bottomWhiteKeyCoordinates = []
     for i in range(0, 53):
         if(i == 0):
-            bottomWhiteKeyCoordinates.append([upperLeftX, upperRightY])
+            bottomWhiteKeyCoordinates.append([upperLeftX, upperLeftY])
         elif(i == 52):
             bottomWhiteKeyCoordinates.append([upperRightX, upperRightY])
         else:
+            baseline = int(upperRightY) - 25
+            while True:
+                sampPoint = (int(whiteKeyBoundaries[i - 1]), baseline)
+                inContour = cv2.pointPolygonTest(perimeter[0], sampPoint, False)
+                if(inContour == 1):
+                    baseline = baseline + 1
+                else:
+                    break
             bottomWhiteKeyCoordinates.append([whiteKeyBoundaries[i - 1], upperRightY])
         
     # Determining top points of white key contours
@@ -521,8 +535,8 @@ def expectedKeyGeneration(cap, detector):
         whiteKeys.append(np.array([topWhiteKeyCoordinates[k], topWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k + 1], bottomWhiteKeyCoordinates[k]], dtype=np.int32))
 
     # Showing the output, debugging purposes
-    #whiteKeyOutput = cv2.drawContours(img, whiteKeys, -1, (0, 0, 255), 3) # removed for console mode
-    #cv2.imshow("White Key Output", whiteKeyOutput)  # removed for console mode
+    whiteKeyOutput = cv2.drawContours(img, whiteKeys, -1, (0, 0, 255), 3) # removed for console mode
+    cv2.imshow("White Key Output", whiteKeyOutput)  # removed for console mode
         
     return whiteKeys, normalizedBlackKeys, whiteKeyBoundaries
             
